@@ -51,7 +51,17 @@ impl Type {
 }
 
 pub fn parse(source: &str) -> Result<Vec<Insn>> {
-    let tokens = source.split_whitespace();
+    let mut code = String::new();
+    for line in source.lines() {
+        let Some(i) = line.find('#') else {
+            code.push_str(line);
+            code.push('\n');
+            continue;
+        };
+        code.push_str(&line[..i]);
+        code.push('\n');
+    }
+    let tokens = code.split_whitespace();
     let mut instructions = Vec::new();
     let mut stack = Vec::new();
     let mut byte_index = 0;
