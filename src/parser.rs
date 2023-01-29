@@ -19,6 +19,7 @@ pub enum Insn {
     PrintString,
     AddInt,
     AddFloat,
+    AddString,
     SubInt,
     SubFloat,
     MulInt,
@@ -84,6 +85,12 @@ pub fn parse(source: &str) -> Result<Vec<Insn>> {
                     stack.push(Type::Float);
                     continue;
                 }
+                if x.is_string() {
+                    instructions.push(Insn::AddString);
+                    stack.push(Type::String);
+                    continue;
+                }
+                println!("arg");
                 return Err(Error::new(ErrorKind::Other, "Invalid stack"));
             }
             "-" => {

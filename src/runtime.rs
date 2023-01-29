@@ -191,6 +191,14 @@ impl<'a> VirtualMachine<'a> {
                         let y = self.pop().float;
                         self.push(VMValue { float: y / x });
                     }
+                    INSN_ADD_STR => {
+                        let x = self.pop().string;
+                        let y = self.pop().string;
+                        self.string_pool.push((*y).clone() + (*x).as_str());
+                        self.push(VMValue {
+                            string: self.string_pool.last().unwrap(),
+                        });
+                    }
                     insn => {
                         (self.panic_handler)(PanicInfo::IllegalInstruction { vm: self, insn });
                     }

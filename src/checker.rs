@@ -237,6 +237,18 @@ pub fn check(bytes: &[u8]) -> Result<(usize, usize)> {
                 expect_type_on_stack(&mut stack, Type::Float, "div-float", read.position() - 2)?;
                 stack.push(Type::Float);
             }
+            INSN_ADD_STR => {
+                if stack_size < 2 {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        invalid_stack("add-string", read.position() - 2),
+                    ));
+                }
+                stack_size -= 1;
+                expect_type_on_stack(&mut stack, Type::String, "add-string", read.position() - 2)?;
+                expect_type_on_stack(&mut stack, Type::String, "add-string", read.position() - 2)?;
+                stack.push(Type::String);
+            }
             _ => {
                 return Err(Error::new(
                     ErrorKind::Other,

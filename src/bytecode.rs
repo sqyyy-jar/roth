@@ -48,3 +48,5 @@ pub const INSN_ADD_F64: u16 = INSN_ADD | FLAG_F64;
 pub const INSN_SUB_F64: u16 = INSN_SUB | FLAG_F64;
 pub const INSN_MUL_F64: u16 = INSN_MUL | FLAG_F64;
 pub const INSN_DIV_F64: u16 = INSN_DIV | FLAG_F64;
+
+pub const INSN_ADD_STR: u16 = INSN_ADD | FLAG_STR;

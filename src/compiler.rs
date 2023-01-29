@@ -22,6 +22,7 @@ pub fn compile(write: &mut impl Write, instructions: &[Insn]) -> Result<()> {
             Insn::PrintString => write.write_u16::<LittleEndian>(INSN_PRINT_STR)?,
             Insn::AddInt => write.write_u16::<LittleEndian>(INSN_ADD_I64)?,
             Insn::AddFloat => write.write_u16::<LittleEndian>(INSN_ADD_F64)?,
+            Insn::AddString => write.write_u16::<LittleEndian>(INSN_ADD_STR)?,
             Insn::SubInt => write.write_u16::<LittleEndian>(INSN_SUB_I64)?,
             Insn::SubFloat => write.write_u16::<LittleEndian>(INSN_SUB_F64)?,
             Insn::MulInt => write.write_u16::<LittleEndian>(INSN_MUL_I64)?,
