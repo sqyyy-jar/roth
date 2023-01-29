@@ -1,4 +1,7 @@
-use std::io::{Error, ErrorKind, Result};
+use std::{
+    collections::HashMap,
+    io::{Error, ErrorKind, Result},
+};
 
 pub enum Insn {
     Pop,
@@ -51,9 +54,12 @@ pub fn parse(source: &str) -> Result<Vec<Insn>> {
     let tokens = source.split_whitespace();
     let mut instructions = Vec::new();
     let mut stack = Vec::new();
+    let mut byte_index = 0;
+    let mut labels = HashMap::new();
     for token in tokens {
         match token {
             "+" => {
+                byte_index += 2;
                 expect_stack_length(&stack, 2)?;
                 let x = stack.pop().unwrap();
                 let y = stack.pop().unwrap();
@@ -71,6 +77,7 @@ pub fn parse(source: &str) -> Result<Vec<Insn>> {
                 return Err(Error::new(ErrorKind::Other, "Invalid stack"));
             }
             "-" => {
+                byte_index += 2;
                 expect_stack_length(&stack, 2)?;
                 let x = stack.pop().unwrap();
                 let y = stack.pop().unwrap();
@@ -88,6 +95,7 @@ pub fn parse(source: &str) -> Result<Vec<Insn>> {
                 return Err(Error::new(ErrorKind::Other, "Invalid stack"));
             }
             "*" => {
+                byte_index += 2;
                 expect_stack_length(&stack, 2)?;
                 let x = stack.pop().unwrap();
                 let y = stack.pop().unwrap();
@@ -105,6 +113,7 @@ pub fn parse(source: &str) -> Result<Vec<Insn>> {
                 return Err(Error::new(ErrorKind::Other, "Invalid stack"));
             }
             "/" => {
+                byte_index += 2;
                 expect_stack_length(&stack, 2)?;
                 let x = stack.pop().unwrap();
                 let y = stack.pop().unwrap();
@@ -122,6 +131,7 @@ pub fn parse(source: &str) -> Result<Vec<Insn>> {
                 return Err(Error::new(ErrorKind::Other, "Invalid stack"));
             }
             "pop" => {
+                byte_index += 2;
                 expect_stack_length(&stack, 1)?;
                 instructions.push(Insn::Pop);
                 let _ = stack.pop().unwrap();
@@ -130,6 +140,7 @@ pub fn parse(source: &str) -> Result<Vec<Insn>> {
                 todo!()
             }
             "swp" => {
+                byte_index += 2;
                 expect_stack_length(&stack, 2)?;
                 instructions.push(Insn::Swp);
                 let x = stack.pop().unwrap();
@@ -138,24 +149,19 @@ pub fn parse(source: &str) -> Result<Vec<Insn>> {
                 stack.push(y);
             }
             "dup" => {
+                byte_index += 2;
                 expect_stack_length(&stack, 1)?;
                 instructions.push(Insn::Dup);
                 let x = stack.pop().unwrap();
                 stack.push(x);
                 stack.push(x);
             }
-            "jmp" => {
-                expect_stack_length(&stack, 1)?;
-                instructions.push(Insn::Jmp);
-                let x = stack.pop().unwrap();
-                if !x.is_int() {
-                    return Err(Error::new(ErrorKind::Other, "Invalid stack"));
-                }
-            }
             "abort" => {
+                byte_index += 2;
                 instructions.push(Insn::Abort);
             }
             "exit" => {
+                byte_index += 2;
                 expect_stack_length(&stack, 1)?;
                 instructions.push(Insn::Exit);
                 let x = stack.pop().unwrap();
@@ -164,6 +170,7 @@ pub fn parse(source: &str) -> Result<Vec<Insn>> {
                 }
             }
             "panic" => {
+                byte_index += 2;
                 expect_stack_length(&stack, 1)?;
                 instructions.push(Insn::Panic);
                 let x = stack.pop().unwrap();
@@ -172,13 +179,16 @@ pub fn parse(source: &str) -> Result<Vec<Insn>> {
                 }
             }
             "ln" => {
+                byte_index += 2;
                 instructions.push(Insn::Println);
             }
             "input" => {
+                byte_index += 2;
                 instructions.push(Insn::Input);
                 stack.push(Type::String);
             }
             "print" => {
+                byte_index += 2;
                 expect_stack_length(&stack, 1)?;
                 let x = stack.pop().unwrap();
                 instructions.push(match x {
@@ -188,14 +198,32 @@ pub fn parse(source: &str) -> Result<Vec<Insn>> {
                 });
             }
             _ => {
+                if let Some(label) = token.strip_prefix(':') {
+                    labels.insert(label.to_string(), byte_index);
+                    continue;
+                }
+                if let Some(label) = token.strip_prefix('@') {
+                    let Some(index) = labels.get(label) else {
+                        return Err(Error::new(
+                            ErrorKind::Other,
+                            format!("Unknown label '{label}'"),
+                        ));
+                    };
+                    byte_index += 10 + 2;
+                    instructions.push(Insn::PushInt(*index));
+                    instructions.push(Insn::Jmp);
+                    continue;
+                }
                 if token.contains('.') {
                     if let Ok(num) = token.parse() {
+                        byte_index += 10;
                         instructions.push(Insn::PushFloat(num));
                         stack.push(Type::Float);
                         continue;
                     }
                 }
                 if let Ok(num) = token.parse() {
+                    byte_index += 10;
                     instructions.push(Insn::PushInt(num));
                     stack.push(Type::Int);
                     continue;
