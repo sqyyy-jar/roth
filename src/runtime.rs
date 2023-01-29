@@ -121,9 +121,14 @@ impl<'a> VirtualMachine<'a> {
                         stdout.flush().expect("Write to stdout");
                     }
                     INSN_INPUT => {
-                        //here
-                        let mut buf = String::with_capacity(5);
+                        let mut buf = String::with_capacity(8);
                         stdin.read_line(&mut buf).expect("Read from stdin");
+                        if buf.ends_with('\n') {
+                            buf.pop().unwrap();
+                        }
+                        if buf.ends_with('\r') {
+                            buf.pop().unwrap();
+                        }
                         self.string_pool.push(buf);
                         *self.sp = VMValue {
                             string: self.string_pool.last().unwrap(),
