@@ -1,10 +1,11 @@
 use std::{
     env::args,
     fs::{self, File},
-    slice,
+    io::{Cursor, Read},
 };
 
 use runtime::VirtualMachine;
+use util::read_string_constants;
 
 pub mod bytecode;
 pub mod checker;
@@ -49,12 +50,22 @@ fn main() {
                 help();
                 return;
             }
-            let bytes = fs::read(&args[2]);
-            if let Err(err) = bytes {
-                println!("Could not read file: {err}");
+            let fio = File::open(&args[2]);
+            if let Err(err) = fio {
+                println!("Could not open file: {err}");
                 return;
             }
-            let bytes = bytes.unwrap();
+            let mut fio = fio.unwrap();
+            let constants = read_string_constants(&mut fio);
+            if let Err(err) = constants {
+                println!("Could not read constants: {err}");
+                return;
+            }
+            let mut bytes = Vec::new();
+            if let Err(err) = fio.read_to_end(&mut bytes) {
+                println!("Could not read file: {err}");
+                return;
+            };
             let check = checker::check(&bytes);
             if let Err(err) = check {
                 println!("Invalid bytecode: {err}");
@@ -62,10 +73,11 @@ fn main() {
             }
             let check = check.unwrap();
             let mut vm = VirtualMachine::new(
-                unsafe { slice::from_raw_parts(bytes.as_ptr(), bytes.len()) },
+                &bytes,
                 0,
                 check.0,
                 util::default_panic_handler,
+                constants.unwrap(),
             );
             vm.execute();
         }
@@ -89,17 +101,24 @@ fn main() {
                 println!("Could not compile: {err}");
                 return;
             };
-            let check = checker::check(&bytes);
+            let mut read = Cursor::new(&bytes);
+            let constants = read_string_constants(&mut read);
+            if let Err(err) = constants {
+                println!("Could not read constants: {err}");
+                return;
+            }
+            let check = checker::check(&bytes[read.position() as usize..]);
             if let Err(err) = check {
                 println!("Invalid bytecode: {err}");
                 return;
             }
             let check = check.unwrap();
             let mut vm = VirtualMachine::new(
-                unsafe { slice::from_raw_parts(bytes.as_ptr(), bytes.len()) },
+                &bytes[read.position() as usize..],
                 0,
                 check.0,
                 util::default_panic_handler,
+                constants.unwrap(),
             );
             vm.execute();
         }

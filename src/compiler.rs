@@ -2,10 +2,18 @@ use std::io::{Result, Write};
 
 use byteorder::{LittleEndian, WriteBytesExt};
 
-use crate::{bytecode::*, parser::Insn};
+use crate::{
+    bytecode::*,
+    parser::{Insn, PreBinary},
+};
 
-pub fn compile(write: &mut impl Write, instructions: &[Insn]) -> Result<()> {
-    for insn in instructions {
+pub fn compile(write: &mut impl Write, pre_binary: &PreBinary) -> Result<()> {
+    write.write_u64::<LittleEndian>(pre_binary.constants.len() as _)?;
+    for constant in &pre_binary.constants {
+        write.write_u64::<LittleEndian>(constant.len() as _)?;
+        write.write_all(constant.as_bytes())?;
+    }
+    for insn in &pre_binary.instructions {
         match insn {
             Insn::Pop => write.write_u16::<LittleEndian>(INSN_POP)?,
             Insn::Ldc => write.write_u16::<LittleEndian>(INSN_LDC)?,

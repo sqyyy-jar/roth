@@ -1,4 +1,9 @@
-use std::process::exit;
+use std::{
+    io::{Read, Result},
+    process::exit,
+};
+
+use byteorder::{LittleEndian, ReadBytesExt};
 
 use crate::runtime::{PanicInfo, VirtualMachine};
 
@@ -30,8 +35,24 @@ pub fn default_panic_handler(info: PanicInfo) -> ! {
             println!("Virtual machine paniced: '{}'", unsafe { (*msg).as_str() });
             dump_vm(vm);
         }
+        PanicInfo::InvalidConstant { vm, index } => {
+            println!("Virtual machine paniced with invalid constant index {index}");
+            dump_vm(vm);
+        }
     }
     exit(-1);
+}
+
+pub fn read_string_constants(read: &mut impl Read) -> Result<Vec<String>> {
+    let len = read.read_u64::<LittleEndian>()?;
+    let mut constants = Vec::with_capacity(len as _);
+    for _ in 0..len {
+        let str_len = read.read_u64::<LittleEndian>()?;
+        let mut buf = String::with_capacity(str_len as _);
+        read.take(str_len).read_to_string(&mut buf)?;
+        constants.push(buf);
+    }
+    Ok(constants)
 }
 
 fn dump_vm(vm: &VirtualMachine) {

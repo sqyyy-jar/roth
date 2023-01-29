@@ -1,8 +1,8 @@
 #![allow(unused)]
 
-pub const TYPE_I64: u32 = 0x1;
-pub const TYPE_F64: u32 = 0x2;
-pub const TYPE_STR: u32 = 0x3;
+pub const TYPE_I64: u8 = 0x1;
+pub const TYPE_F64: u8 = 0x2;
+pub const TYPE_STR: u8 = 0x3;
 
 const FLAG_I64: u16 = (TYPE_I64 as u16) << 8;
 const FLAG_F64: u16 = (TYPE_F64 as u16) << 8;

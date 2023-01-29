@@ -3,6 +3,11 @@ use std::{
     io::{Error, ErrorKind, Result},
 };
 
+pub struct PreBinary {
+    pub constants: Vec<String>,
+    pub instructions: Vec<Insn>,
+}
+
 pub enum Insn {
     Pop,
     Ldc,
@@ -51,24 +56,93 @@ impl Type {
     }
 }
 
-pub fn parse(source: &str) -> Result<Vec<Insn>> {
-    let mut code = String::new();
-    for line in source.lines() {
-        let Some(i) = line.find('#') else {
-            code.push_str(line);
-            code.push('\n');
-            continue;
-        };
-        code.push_str(&line[..i]);
-        code.push('\n');
+pub fn parse(source: &str) -> Result<PreBinary> {
+    let mut tokens = Vec::new();
+    let mut token = String::new();
+    let pre_code = source.replace('\r', "");
+    let mut chars = pre_code.chars().peekable();
+    while let Some(c) = chars.next() {
+        match c {
+            '#' => {
+                if !token.is_empty() {
+                    tokens.push(token);
+                    token = String::new();
+                }
+                for ac in chars.by_ref() {
+                    if ac == '\n' {
+                        break;
+                    }
+                }
+            }
+            '"' => {
+                token.push(c);
+                while let Some(ac) = chars.next() {
+                    if ac == '"' {
+                        token.push(ac);
+                        break;
+                    }
+                    if ac == '\n' {
+                        return Err(Error::new(ErrorKind::Other, "Invalid string literal"));
+                    }
+                    if ac == '\\' {
+                        let Some(ac) = chars.next() else {
+                            return Err(Error::new(ErrorKind::Other, "Invalid escape in string"));
+                        };
+                        match ac {
+                            '"' => token.push('"'),
+                            'n' => token.push('\n'),
+                            'r' => token.push('\r'),
+                            't' => token.push('\t'),
+                            _ => {
+                                return Err(Error::new(
+                                    ErrorKind::Other,
+                                    "Invalid escape in string",
+                                ));
+                            }
+                        }
+                        continue;
+                    }
+                    token.push(ac);
+                }
+                tokens.push(token);
+                token = String::new();
+            }
+            _ => {
+                if c.is_whitespace() {
+                    if !token.is_empty() {
+                        tokens.push(token);
+                        token = String::new();
+                    }
+                    while let Some(ac) = chars.peek() {
+                        if !ac.is_whitespace() {
+                            break;
+                        }
+                        chars.next().unwrap();
+                    }
+                    continue;
+                }
+                token.push(c);
+                while let Some(ac) = chars.peek().cloned() {
+                    if ac.is_whitespace() {
+                        break;
+                    }
+                    chars.next().unwrap();
+                    token.push(ac);
+                }
+                if !token.is_empty() {
+                    tokens.push(token);
+                    token = String::new();
+                }
+            }
+        }
     }
-    let tokens = code.split_whitespace();
     let mut instructions = Vec::new();
     let mut stack = Vec::new();
     let mut byte_index = 0;
     let mut labels = HashMap::new();
+    let mut constants = Vec::new();
     for token in tokens {
-        match token {
+        match token.as_str() {
             "+" => {
                 byte_index += 2;
                 expect_stack_length(&stack, 2)?;
@@ -91,7 +165,7 @@ pub fn parse(source: &str) -> Result<Vec<Insn>> {
                     continue;
                 }
                 println!("arg");
-                return Err(Error::new(ErrorKind::Other, "Invalid stack"));
+                return Err(Error::new(ErrorKind::Other, "Invalid stack to add"));
             }
             "-" => {
                 byte_index += 2;
@@ -109,7 +183,7 @@ pub fn parse(source: &str) -> Result<Vec<Insn>> {
                     stack.push(Type::Float);
                     continue;
                 }
-                return Err(Error::new(ErrorKind::Other, "Invalid stack"));
+                return Err(Error::new(ErrorKind::Other, "Invalid stack to subtract"));
             }
             "*" => {
                 byte_index += 2;
@@ -127,7 +201,7 @@ pub fn parse(source: &str) -> Result<Vec<Insn>> {
                     stack.push(Type::Float);
                     continue;
                 }
-                return Err(Error::new(ErrorKind::Other, "Invalid stack"));
+                return Err(Error::new(ErrorKind::Other, "Invalid stack to multiply"));
             }
             "/" => {
                 byte_index += 2;
@@ -145,7 +219,7 @@ pub fn parse(source: &str) -> Result<Vec<Insn>> {
                     stack.push(Type::Float);
                     continue;
                 }
-                return Err(Error::new(ErrorKind::Other, "Invalid stack"));
+                return Err(Error::new(ErrorKind::Other, "Invalid stack to divide"));
             }
             "pop" => {
                 byte_index += 2;
@@ -154,7 +228,16 @@ pub fn parse(source: &str) -> Result<Vec<Insn>> {
                 let _ = stack.pop().unwrap();
             }
             "ldc" => {
-                todo!()
+                byte_index += 2;
+                expect_stack_length(&stack, 1)?;
+                instructions.push(Insn::Ldc);
+                let x = stack.pop().unwrap();
+                if !x.is_int() {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        "Invalid stack to load constant",
+                    ));
+                }
             }
             "swp" => {
                 byte_index += 2;
@@ -231,6 +314,14 @@ pub fn parse(source: &str) -> Result<Vec<Insn>> {
                     instructions.push(Insn::Jmp);
                     continue;
                 }
+                if let Some(string) = token.strip_prefix('"') {
+                    byte_index += 10 + 2;
+                    instructions.push(Insn::PushInt(constants.len() as _));
+                    instructions.push(Insn::Ldc);
+                    constants.push(string[0..string.len() - 1].to_string());
+                    stack.push(Type::String);
+                    continue;
+                }
                 if token.contains('.') {
                     if let Ok(num) = token.parse() {
                         byte_index += 10;
@@ -252,7 +343,10 @@ pub fn parse(source: &str) -> Result<Vec<Insn>> {
             }
         }
     }
-    Ok(instructions)
+    Ok(PreBinary {
+        constants,
+        instructions,
+    })
 }
 
 fn expect_equal(x: Type, y: Type) -> Result<()> {

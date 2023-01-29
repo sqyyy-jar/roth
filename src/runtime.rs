@@ -20,6 +20,7 @@ pub struct VirtualMachine<'a> {
     pub pc: usize,
     pub code: &'a [u8],
     pub stack_size: usize,
+    pub constants: Vec<String>,
     pub string_pool: Vec<String>,
     pub panic_handler: fn(PanicInfo) -> !,
 }
@@ -31,6 +32,7 @@ impl<'a> VirtualMachine<'a> {
         pc: usize,
         stack_size: usize,
         panic_handler: fn(PanicInfo) -> !,
+        constants: Vec<String>,
     ) -> Self {
         let layout = unsafe { Layout::from_size_align_unchecked(stack_size, ALIGNMENT) };
         let bp = unsafe { alloc_zeroed(layout) };
@@ -40,6 +42,7 @@ impl<'a> VirtualMachine<'a> {
             stack_size: layout.size(),
             panic_handler,
             pc,
+            constants,
             string_pool: Vec::with_capacity(0),
             code,
         }
@@ -86,7 +89,14 @@ impl<'a> VirtualMachine<'a> {
                         self.sp = self.sp.sub(1);
                     }
                     INSN_LDC => {
-                        todo!()
+                        let i = self.pop().int;
+                        if i < 0 {
+                            (self.panic_handler)(PanicInfo::InvalidConstant { vm: self, index: i });
+                        }
+                        let Some(constant) = self.constants.get(i as usize) else {
+                            (self.panic_handler)(PanicInfo::InvalidConstant { vm: self, index: i });
+                        };
+                        self.push(VMValue { string: constant });
                     }
                     INSN_SWP => {
                         let tmp = *self.sp.sub(2);
@@ -244,5 +254,9 @@ pub enum PanicInfo<'a, 'b: 'a> {
     Panic {
         vm: &'a mut VirtualMachine<'b>,
         msg: *const String,
+    },
+    InvalidConstant {
+        vm: &'a mut VirtualMachine<'b>,
+        index: i64,
     },
 }

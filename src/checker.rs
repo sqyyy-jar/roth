@@ -35,7 +35,10 @@ pub fn check(bytes: &[u8]) -> Result<(usize, usize)> {
                 stack_size -= 1;
                 stack.pop().unwrap();
             }
-            INSN_LDC => {}
+            INSN_LDC => {
+                stack_size += 1;
+                stack.push(Type::String);
+            }
             INSN_SWP => {
                 if stack_size < 2 {
                     return Err(Error::new(
