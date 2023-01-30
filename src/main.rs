@@ -14,6 +14,16 @@ pub mod parser;
 pub mod runtime;
 pub mod util;
 
+pub struct Flags {
+    pub verify: bool,
+}
+
+impl Default for Flags {
+    fn default() -> Self {
+        Self { verify: true }
+    }
+}
+
 fn main() {
     let args: Vec<_> = args().collect();
     if args.len() < 3 {
@@ -22,9 +32,13 @@ fn main() {
     }
     match args[1].as_str() {
         "compile" | "c" => {
-            if args.len() != 4 {
+            if args.len() < 4 {
                 help();
                 return;
+            }
+            let mut flags = Flags::default();
+            if args.len() > 4 {
+                parse_flags(&mut flags, &args[4..]);
             }
             let source = fs::read_to_string(&args[2]);
             if let Err(err) = source {
@@ -36,7 +50,7 @@ fn main() {
                 println!("Could not create target file: {err}");
                 return;
             }
-            let parse_result = parser::parse(source.unwrap().as_str());
+            let parse_result = parser::parse(source.unwrap().as_str(), &flags);
             if let Err(err) = parse_result {
                 println!("Could not parse: {err}");
                 return;
@@ -46,9 +60,13 @@ fn main() {
             };
         }
         "run" | "r" => {
-            if args.len() != 3 {
+            if args.len() < 3 {
                 help();
                 return;
+            }
+            let mut flags = Flags::default();
+            if args.len() > 3 {
+                parse_flags(&mut flags, &args[3..]);
             }
             let fio = File::open(&args[2]);
             if let Err(err) = fio {
@@ -66,37 +84,45 @@ fn main() {
                 println!("Could not read file: {err}");
                 return;
             };
-            let check = checker::check(&bytes);
-            if let Err(err) = check {
-                println!("Invalid bytecode: {err}");
-                return;
-            }
-            let check = check.unwrap();
             let mut vm = VirtualMachine::new(
                 &bytes,
                 0,
-                check.0,
+                if flags.verify {
+                    let check = checker::check(&bytes);
+                    if let Err(err) = check {
+                        println!("Invalid bytecode: {err}");
+                        return;
+                    }
+                    let check = check.unwrap();
+                    check.0
+                } else {
+                    4096 * 16
+                },
                 util::default_panic_handler,
                 constants.unwrap(),
             );
             vm.execute();
         }
         "interpret" | "i" => {
-            if args.len() != 3 {
+            if args.len() < 3 {
                 help();
                 return;
+            }
+            let mut flags = Flags::default();
+            if args.len() > 3 {
+                parse_flags(&mut flags, &args[3..]);
             }
             let source = fs::read_to_string(&args[2]);
             if let Err(err) = source {
                 println!("Could not read source file: {err}");
                 return;
             }
-            let mut bytes = Vec::new();
-            let parse_result = parser::parse(source.unwrap().as_str());
+            let parse_result = parser::parse(source.unwrap().as_str(), &flags);
             if let Err(err) = parse_result {
                 println!("Could not parse: {err}");
                 return;
             }
+            let mut bytes = Vec::new();
             if let Err(err) = compiler::compile(&mut bytes, &parse_result.unwrap()) {
                 println!("Could not compile: {err}");
                 return;
@@ -107,16 +133,20 @@ fn main() {
                 println!("Could not read constants: {err}");
                 return;
             }
-            let check = checker::check(&bytes[read.position() as usize..]);
-            if let Err(err) = check {
-                println!("Invalid bytecode: {err}");
-                return;
-            }
-            let check = check.unwrap();
+            let stack_size = if flags.verify {
+                let check = checker::check(&bytes[read.position() as usize..]);
+                if let Err(err) = check {
+                    println!("Invalid bytecode: {err}");
+                    return;
+                }
+                check.unwrap().0
+            } else {
+                4096 * 16
+            };
             let mut vm = VirtualMachine::new(
                 &bytes[read.position() as usize..],
                 0,
-                check.0,
+                stack_size,
                 util::default_panic_handler,
                 constants.unwrap(),
             );
@@ -136,4 +166,14 @@ run, r        [file]                       Run compiled binary
 interpret, i  [source file]                Run file directly
 "#
     );
+}
+
+fn parse_flags(flags: &mut Flags, args: &[String]) {
+    for flag in args {
+        match flag.as_str() {
+            "-verify" => flags.verify = true,
+            "-noverify" => flags.verify = false,
+            _ => {}
+        }
+    }
 }

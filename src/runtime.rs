@@ -39,7 +39,7 @@ impl<'a> VirtualMachine<'a> {
         Self {
             bp: bp as _,
             sp: bp as _,
-            stack_size: layout.size(),
+            stack_size,
             panic_handler,
             pc,
             constants,
