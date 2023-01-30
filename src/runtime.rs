@@ -85,7 +85,7 @@ impl<'a> VirtualMachine<'a> {
             while !self.is_at_end() {
                 let insn = self.fetch_insn();
                 match insn {
-                    INSN_POP => {
+                    INSN_DROP => {
                         self.sp = self.sp.sub(1);
                     }
                     INSN_LDC => {
@@ -111,9 +111,31 @@ impl<'a> VirtualMachine<'a> {
                         self.sp = self.sp.sub(1);
                         self.pc = (*self.sp).int as _;
                     }
+                    INSN_JMPIF => {
+                        self.sp = self.sp.sub(2);
+                        if (*self.sp).int != 0 {
+                            self.pc = (*self.sp.add(1)).int as _;
+                        }
+                    }
+                    INSN_JMPIFZ => {
+                        self.sp = self.sp.sub(2);
+                        if (*self.sp).int == 0 {
+                            self.pc = (*self.sp.add(1)).int as _;
+                        }
+                    }
                     INSN_PUSH_I64 | INSN_PUSH_F64 => {
                         *self.sp = self.fetch_const();
                         self.sp = self.sp.add(1);
+                    }
+                    INSN_NUMCONV_I64 => {
+                        *self.sp.sub(1) = VMValue {
+                            int: (*self.sp.sub(1)).float as i64,
+                        };
+                    }
+                    INSN_NUMCONV_F64 => {
+                        *self.sp.sub(1) = VMValue {
+                            float: (*self.sp.sub(1)).int as f64,
+                        };
                     }
                     INSN_ABRT => (self.panic_handler)(PanicInfo::Abort { vm: self }),
                     INSN_EXIT => {
@@ -212,6 +234,83 @@ impl<'a> VirtualMachine<'a> {
                         self.string_pool.push((*y).clone() + (*x).as_str());
                         self.push(VMValue {
                             string: self.string_pool.last().unwrap(),
+                        });
+                    }
+                    INSN_EQ_I64 => {
+                        let x = self.pop().int;
+                        let y = self.pop().int;
+                        self.push(VMValue {
+                            int: (x == y) as i64,
+                        });
+                    }
+                    INSN_LT_I64 => {
+                        let x = self.pop().int;
+                        let y = self.pop().int;
+                        self.push(VMValue {
+                            int: (y < x) as i64,
+                        });
+                    }
+                    INSN_GT_I64 => {
+                        let x = self.pop().int;
+                        let y = self.pop().int;
+                        self.push(VMValue {
+                            int: (y > x) as i64,
+                        });
+                    }
+                    INSN_LE_I64 => {
+                        let x = self.pop().int;
+                        let y = self.pop().int;
+                        self.push(VMValue {
+                            int: (y <= x) as i64,
+                        });
+                    }
+                    INSN_GE_I64 => {
+                        let x = self.pop().int;
+                        let y = self.pop().int;
+                        self.push(VMValue {
+                            int: (y >= x) as i64,
+                        });
+                    }
+                    INSN_EQ_F64 => {
+                        let x = self.pop().float;
+                        let y = self.pop().float;
+                        self.push(VMValue {
+                            int: (y == x) as i64,
+                        });
+                    }
+                    INSN_LT_F64 => {
+                        let x = self.pop().float;
+                        let y = self.pop().float;
+                        self.push(VMValue {
+                            int: (y < x) as i64,
+                        });
+                    }
+                    INSN_GT_F64 => {
+                        let x = self.pop().float;
+                        let y = self.pop().float;
+                        self.push(VMValue {
+                            int: (y > x) as i64,
+                        });
+                    }
+                    INSN_LE_F64 => {
+                        let x = self.pop().float;
+                        let y = self.pop().float;
+                        self.push(VMValue {
+                            int: (y <= x) as i64,
+                        });
+                    }
+                    INSN_GE_F64 => {
+                        let x = self.pop().float;
+                        let y = self.pop().float;
+                        self.push(VMValue {
+                            int: (y >= x) as i64,
+                        });
+                    }
+                    INSN_EQ_STR => {
+                        let x = self.pop().string;
+                        let y = self.pop().string;
+                        self.push(VMValue {
+                            int: (*x == *y) as i64,
                         });
                     }
                     insn => {

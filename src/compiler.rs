@@ -15,11 +15,23 @@ pub fn compile(write: &mut impl Write, pre_binary: &PreBinary) -> Result<()> {
     }
     for insn in &pre_binary.instructions {
         match insn {
-            Insn::Pop => write.write_u16::<LittleEndian>(INSN_POP)?,
+            Insn::Drop => dbg!(write.write_u16::<LittleEndian>(INSN_DROP)?),
             Insn::Ldc => write.write_u16::<LittleEndian>(INSN_LDC)?,
             Insn::Swp => write.write_u16::<LittleEndian>(INSN_SWP)?,
             Insn::Dup => write.write_u16::<LittleEndian>(INSN_DUP)?,
             Insn::Jmp => write.write_u16::<LittleEndian>(INSN_JMP)?,
+            Insn::JmpIf => write.write_u16::<LittleEndian>(INSN_JMPIF)?,
+            Insn::JmpIfZ => write.write_u16::<LittleEndian>(INSN_JMPIFZ)?,
+            Insn::PushInt(value) => {
+                write.write_u16::<LittleEndian>(INSN_PUSH_I64)?;
+                write.write_i64::<LittleEndian>(*value)?;
+            }
+            Insn::PushFloat(value) => {
+                write.write_u16::<LittleEndian>(INSN_PUSH_F64)?;
+                write.write_f64::<LittleEndian>(*value)?;
+            }
+            Insn::NumConvInt => write.write_u16::<LittleEndian>(INSN_NUMCONV_I64)?,
+            Insn::NumConvFloat => write.write_u16::<LittleEndian>(INSN_NUMCONV_F64)?,
             Insn::Abort => write.write_u16::<LittleEndian>(INSN_ABRT)?,
             Insn::Exit => write.write_u16::<LittleEndian>(INSN_EXIT)?,
             Insn::Panic => write.write_u16::<LittleEndian>(INSN_PANIC)?,
@@ -37,14 +49,17 @@ pub fn compile(write: &mut impl Write, pre_binary: &PreBinary) -> Result<()> {
             Insn::MulFloat => write.write_u16::<LittleEndian>(INSN_MUL_F64)?,
             Insn::DivInt => write.write_u16::<LittleEndian>(INSN_DIV_I64)?,
             Insn::DivFloat => write.write_u16::<LittleEndian>(INSN_DIV_F64)?,
-            Insn::PushInt(value) => {
-                write.write_u16::<LittleEndian>(INSN_PUSH_I64)?;
-                write.write_i64::<LittleEndian>(*value)?;
-            }
-            Insn::PushFloat(value) => {
-                write.write_u16::<LittleEndian>(INSN_PUSH_F64)?;
-                write.write_f64::<LittleEndian>(*value)?;
-            }
+            Insn::EqInt => write.write_u16::<LittleEndian>(INSN_EQ_I64)?,
+            Insn::LtInt => write.write_u16::<LittleEndian>(INSN_LT_I64)?,
+            Insn::GtInt => write.write_u16::<LittleEndian>(INSN_GT_I64)?,
+            Insn::LeInt => write.write_u16::<LittleEndian>(INSN_LE_I64)?,
+            Insn::GeInt => write.write_u16::<LittleEndian>(INSN_GE_I64)?,
+            Insn::EqFloat => write.write_u16::<LittleEndian>(INSN_EQ_F64)?,
+            Insn::LtFloat => write.write_u16::<LittleEndian>(INSN_LT_F64)?,
+            Insn::GtFloat => write.write_u16::<LittleEndian>(INSN_GT_F64)?,
+            Insn::LeFloat => write.write_u16::<LittleEndian>(INSN_LE_F64)?,
+            Insn::GeFloat => write.write_u16::<LittleEndian>(INSN_GE_F64)?,
+            Insn::EqString => write.write_u16::<LittleEndian>(INSN_EQ_STR)?,
         }
     }
     Ok(())

@@ -3,17 +3,25 @@ use std::{
     io::{Error, ErrorKind, Result},
 };
 
+use crate::bytecode::Type;
+
 pub struct PreBinary {
     pub constants: Vec<String>,
     pub instructions: Vec<Insn>,
 }
 
 pub enum Insn {
-    Pop,
+    Drop,
     Ldc,
     Swp,
     Dup,
     Jmp,
+    JmpIf,
+    JmpIfZ,
+    PushInt(i64),
+    PushFloat(f64),
+    NumConvInt,
+    NumConvFloat,
     Abort,
     Exit,
     Panic,
@@ -23,37 +31,25 @@ pub enum Insn {
     PrintFloat,
     PrintString,
     AddInt,
-    AddFloat,
-    AddString,
     SubInt,
-    SubFloat,
     MulInt,
-    MulFloat,
     DivInt,
+    AddFloat,
+    SubFloat,
+    MulFloat,
     DivFloat,
-    PushInt(i64),
-    PushFloat(f64),
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum Type {
-    Int,
-    Float,
-    String,
-}
-
-impl Type {
-    fn is_int(&self) -> bool {
-        *self == Type::Int
-    }
-
-    fn is_float(&self) -> bool {
-        *self == Type::Float
-    }
-
-    fn is_string(&self) -> bool {
-        *self == Type::String
-    }
+    AddString,
+    EqInt,
+    LtInt,
+    GtInt,
+    LeInt,
+    GeInt,
+    EqFloat,
+    LtFloat,
+    GtFloat,
+    LeFloat,
+    GeFloat,
+    EqString,
 }
 
 pub fn parse(source: &str) -> Result<PreBinary> {
@@ -221,10 +217,105 @@ pub fn parse(source: &str) -> Result<PreBinary> {
                 }
                 return Err(Error::new(ErrorKind::Other, "Invalid stack to divide"));
             }
-            "pop" => {
+            "=" => {
+                byte_index += 2;
+                expect_stack_length(&stack, 2)?;
+                let x = stack.pop().unwrap();
+                let y = stack.pop().unwrap();
+                expect_equal(x, y)?;
+                if x.is_int() {
+                    instructions.push(Insn::EqInt);
+                    stack.push(Type::Int);
+                    continue;
+                }
+                if x.is_float() {
+                    instructions.push(Insn::EqFloat);
+                    stack.push(Type::Int);
+                    continue;
+                }
+                if x.is_string() {
+                    instructions.push(Insn::EqString);
+                    stack.push(Type::Int);
+                    continue;
+                }
+                return Err(Error::new(ErrorKind::Other, "Invalid stack to compare"));
+            }
+            "<" => {
+                byte_index += 2;
+                expect_stack_length(&stack, 2)?;
+                let x = stack.pop().unwrap();
+                let y = stack.pop().unwrap();
+                expect_equal(x, y)?;
+                if x.is_int() {
+                    instructions.push(Insn::LtInt);
+                    stack.push(Type::Int);
+                    continue;
+                }
+                if x.is_float() {
+                    instructions.push(Insn::LtFloat);
+                    stack.push(Type::Int);
+                    continue;
+                }
+                return Err(Error::new(ErrorKind::Other, "Invalid stack to compare"));
+            }
+            ">" => {
+                byte_index += 2;
+                expect_stack_length(&stack, 2)?;
+                let x = stack.pop().unwrap();
+                let y = stack.pop().unwrap();
+                expect_equal(x, y)?;
+                if x.is_int() {
+                    instructions.push(Insn::GtInt);
+                    stack.push(Type::Int);
+                    continue;
+                }
+                if x.is_float() {
+                    instructions.push(Insn::GtFloat);
+                    stack.push(Type::Int);
+                    continue;
+                }
+                return Err(Error::new(ErrorKind::Other, "Invalid stack to compare"));
+            }
+            "<=" => {
+                byte_index += 2;
+                expect_stack_length(&stack, 2)?;
+                let x = stack.pop().unwrap();
+                let y = stack.pop().unwrap();
+                expect_equal(x, y)?;
+                if x.is_int() {
+                    instructions.push(Insn::LeInt);
+                    stack.push(Type::Int);
+                    continue;
+                }
+                if x.is_float() {
+                    instructions.push(Insn::LeFloat);
+                    stack.push(Type::Int);
+                    continue;
+                }
+                return Err(Error::new(ErrorKind::Other, "Invalid stack to compare"));
+            }
+            ">=" => {
+                byte_index += 2;
+                expect_stack_length(&stack, 2)?;
+                let x = stack.pop().unwrap();
+                let y = stack.pop().unwrap();
+                expect_equal(x, y)?;
+                if x.is_int() {
+                    instructions.push(Insn::GeInt);
+                    stack.push(Type::Int);
+                    continue;
+                }
+                if x.is_float() {
+                    instructions.push(Insn::GeFloat);
+                    stack.push(Type::Int);
+                    continue;
+                }
+                return Err(Error::new(ErrorKind::Other, "Invalid stack to compare"));
+            }
+            "drop" => {
                 byte_index += 2;
                 expect_stack_length(&stack, 1)?;
-                instructions.push(Insn::Pop);
+                instructions.push(Insn::Drop);
                 let _ = stack.pop().unwrap();
             }
             "ldc" => {
@@ -255,6 +346,26 @@ pub fn parse(source: &str) -> Result<PreBinary> {
                 let x = stack.pop().unwrap();
                 stack.push(x);
                 stack.push(x);
+            }
+            "if" => {
+                byte_index += 2;
+                expect_stack_length(&stack, 2)?;
+                instructions.push(Insn::JmpIf);
+                let x = stack.pop().unwrap();
+                let y = stack.pop().unwrap();
+                if !x.is_int() || !y.is_int() {
+                    return Err(Error::new(ErrorKind::Other, "Invalid stack"));
+                }
+            }
+            "!if" => {
+                byte_index += 2;
+                expect_stack_length(&stack, 2)?;
+                instructions.push(Insn::JmpIfZ);
+                let x = stack.pop().unwrap();
+                let y = stack.pop().unwrap();
+                if !x.is_int() || !y.is_int() {
+                    return Err(Error::new(ErrorKind::Other, "Invalid stack"));
+                }
             }
             "abort" => {
                 byte_index += 2;
@@ -297,6 +408,26 @@ pub fn parse(source: &str) -> Result<PreBinary> {
                     Type::String => Insn::PrintString,
                 });
             }
+            "~float" => {
+                byte_index += 2;
+                expect_stack_length(&stack, 1)?;
+                let x = stack.pop().unwrap();
+                if !x.is_int() {
+                    return Err(Error::new(ErrorKind::Other, "Invalid stack"));
+                }
+                stack.push(Type::Float);
+                instructions.push(Insn::NumConvFloat);
+            }
+            "~int" => {
+                byte_index += 2;
+                expect_stack_length(&stack, 1)?;
+                let x = stack.pop().unwrap();
+                if !x.is_float() {
+                    return Err(Error::new(ErrorKind::Other, "Invalid stack"));
+                }
+                stack.push(Type::Int);
+                instructions.push(Insn::NumConvInt);
+            }
             _ => {
                 if let Some(label) = token.strip_prefix(':') {
                     labels.insert(label.to_string(), byte_index);
@@ -312,6 +443,18 @@ pub fn parse(source: &str) -> Result<PreBinary> {
                     byte_index += 10 + 2;
                     instructions.push(Insn::PushInt(*index));
                     instructions.push(Insn::Jmp);
+                    continue;
+                }
+                if let Some(label) = token.strip_prefix('&') {
+                    let Some(index) = labels.get(label) else {
+                        return Err(Error::new(
+                            ErrorKind::Other,
+                            format!("Unknown label '{label}'"),
+                        ));
+                    };
+                    byte_index += 10;
+                    instructions.push(Insn::PushInt(*index));
+                    stack.push(Type::Int);
                     continue;
                 }
                 if let Some(string) = token.strip_prefix('"') {

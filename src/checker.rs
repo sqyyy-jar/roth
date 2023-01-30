@@ -4,13 +4,6 @@ use byteorder::{LittleEndian, ReadBytesExt};
 
 use crate::bytecode::*;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum Type {
-    Int,
-    Float,
-    String,
-}
-
 pub fn check(bytes: &[u8]) -> Result<(usize, usize)> {
     if bytes.len() % 2 != 0 {
         return Err(Error::new(
@@ -21,11 +14,11 @@ pub fn check(bytes: &[u8]) -> Result<(usize, usize)> {
     let mut read = Cursor::new(bytes);
     let mut max_stack_size = 0;
     let mut stack_size = 0;
-    let mut stack = Vec::new();
+    let mut stack: Vec<Type> = Vec::new();
     while bytes.len() - read.position() as usize >= 2 {
         let insn = read.read_u16::<LittleEndian>()?;
         match insn {
-            INSN_POP => {
+            INSN_DROP => {
                 if stack_size < 1 {
                     return Err(Error::new(
                         ErrorKind::Other,
@@ -36,7 +29,19 @@ pub fn check(bytes: &[u8]) -> Result<(usize, usize)> {
                 stack.pop().unwrap();
             }
             INSN_LDC => {
-                stack_size += 1;
+                if stack_size < 1 {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        invalid_stack("ldc", read.position() - 2),
+                    ));
+                }
+                let x = stack.pop().unwrap();
+                if !x.is_int() {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        invalid_stack("ldc", read.position() - 2),
+                    ));
+                }
                 stack.push(Type::String);
             }
             INSN_SWP => {
@@ -73,6 +78,28 @@ pub fn check(bytes: &[u8]) -> Result<(usize, usize)> {
                 stack_size -= 1;
                 expect_type_on_stack(&mut stack, Type::Int, "jmp", read.position() - 2)?;
             }
+            INSN_JMPIF => {
+                if stack_size < 2 {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        invalid_stack("jmpif", read.position() - 2),
+                    ));
+                }
+                stack_size -= 2;
+                expect_type_on_stack(&mut stack, Type::Int, "jmpif", read.position() - 2)?;
+                expect_type_on_stack(&mut stack, Type::Int, "jmpif", read.position() - 2)?;
+            }
+            INSN_JMPIFZ => {
+                if stack_size < 2 {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        invalid_stack("jmpifz", read.position() - 2),
+                    ));
+                }
+                stack_size -= 2;
+                expect_type_on_stack(&mut stack, Type::Int, "jmpifz", read.position() - 2)?;
+                expect_type_on_stack(&mut stack, Type::Int, "jmpifz", read.position() - 2)?;
+            }
             INSN_PUSH_I64 => {
                 stack_size += 1;
                 stack.push(Type::Int);
@@ -82,6 +109,26 @@ pub fn check(bytes: &[u8]) -> Result<(usize, usize)> {
                 stack_size += 1;
                 stack.push(Type::Float);
                 read.read_f64::<LittleEndian>()?;
+            }
+            INSN_NUMCONV_I64 => {
+                if stack_size < 1 {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        invalid_stack("numconv-int", read.position() - 2),
+                    ));
+                }
+                expect_type_on_stack(&mut stack, Type::Float, "numconv-int", read.position() - 2)?;
+                stack.push(Type::Int);
+            }
+            INSN_NUMCONV_F64 => {
+                if stack_size < 1 {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        invalid_stack("numconv-float", read.position() - 2),
+                    ));
+                }
+                expect_type_on_stack(&mut stack, Type::Int, "numconv-float", read.position() - 2)?;
+                stack.push(Type::Float);
             }
             INSN_ABRT => {}
             INSN_EXIT => {
@@ -144,100 +191,28 @@ pub fn check(bytes: &[u8]) -> Result<(usize, usize)> {
                     read.position() - 2,
                 )?;
             }
-            INSN_ADD_I64 => {
+            INSN_ADD_I64 | INSN_SUB_I64 | INSN_MUL_I64 | INSN_DIV_I64 => {
                 if stack_size < 2 {
                     return Err(Error::new(
                         ErrorKind::Other,
-                        invalid_stack("add-int", read.position() - 2),
+                        invalid_stack("math-int", read.position() - 2),
                     ));
                 }
                 stack_size -= 1;
-                expect_type_on_stack(&mut stack, Type::Int, "add-int", read.position() - 2)?;
-                expect_type_on_stack(&mut stack, Type::Int, "add-int", read.position() - 2)?;
+                expect_type_on_stack(&mut stack, Type::Int, "math-int", read.position() - 2)?;
+                expect_type_on_stack(&mut stack, Type::Int, "math-int", read.position() - 2)?;
                 stack.push(Type::Int);
             }
-            INSN_SUB_I64 => {
+            INSN_ADD_F64 | INSN_SUB_F64 | INSN_MUL_F64 | INSN_DIV_F64 => {
                 if stack_size < 2 {
                     return Err(Error::new(
                         ErrorKind::Other,
-                        invalid_stack("sub-int", read.position() - 2),
+                        invalid_stack("math-float", read.position() - 2),
                     ));
                 }
                 stack_size -= 1;
-                expect_type_on_stack(&mut stack, Type::Int, "sub-int", read.position() - 2)?;
-                expect_type_on_stack(&mut stack, Type::Int, "sub-int", read.position() - 2)?;
-                stack.push(Type::Int);
-            }
-            INSN_MUL_I64 => {
-                if stack_size < 2 {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        invalid_stack("mul-int", read.position() - 2),
-                    ));
-                }
-                stack_size -= 1;
-                expect_type_on_stack(&mut stack, Type::Int, "mul-int", read.position() - 2)?;
-                expect_type_on_stack(&mut stack, Type::Int, "mul-int", read.position() - 2)?;
-                stack.push(Type::Int);
-            }
-            INSN_DIV_I64 => {
-                if stack_size < 2 {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        invalid_stack("div-int", read.position() - 2),
-                    ));
-                }
-                stack_size -= 1;
-                expect_type_on_stack(&mut stack, Type::Int, "div-int", read.position() - 2)?;
-                expect_type_on_stack(&mut stack, Type::Int, "div-int", read.position() - 2)?;
-                stack.push(Type::Int);
-            }
-            INSN_ADD_F64 => {
-                if stack_size < 2 {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        invalid_stack("add-float", read.position() - 2),
-                    ));
-                }
-                stack_size -= 1;
-                expect_type_on_stack(&mut stack, Type::Float, "add-float", read.position() - 2)?;
-                expect_type_on_stack(&mut stack, Type::Float, "add-float", read.position() - 2)?;
-                stack.push(Type::Float);
-            }
-            INSN_SUB_F64 => {
-                if stack_size < 2 {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        invalid_stack("sub-float", read.position() - 2),
-                    ));
-                }
-                stack_size -= 1;
-                expect_type_on_stack(&mut stack, Type::Float, "sub-float", read.position() - 2)?;
-                expect_type_on_stack(&mut stack, Type::Float, "sub-float", read.position() - 2)?;
-                stack.push(Type::Float);
-            }
-            INSN_MUL_F64 => {
-                if stack_size < 2 {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        invalid_stack("mul-float", read.position() - 2),
-                    ));
-                }
-                stack_size -= 1;
-                expect_type_on_stack(&mut stack, Type::Float, "mul-float", read.position() - 2)?;
-                expect_type_on_stack(&mut stack, Type::Float, "mul-float", read.position() - 2)?;
-                stack.push(Type::Float);
-            }
-            INSN_DIV_F64 => {
-                if stack_size < 2 {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        invalid_stack("div-float", read.position() - 2),
-                    ));
-                }
-                stack_size -= 1;
-                expect_type_on_stack(&mut stack, Type::Float, "div-float", read.position() - 2)?;
-                expect_type_on_stack(&mut stack, Type::Float, "div-float", read.position() - 2)?;
+                expect_type_on_stack(&mut stack, Type::Float, "math-float", read.position() - 2)?;
+                expect_type_on_stack(&mut stack, Type::Float, "math-float", read.position() - 2)?;
                 stack.push(Type::Float);
             }
             INSN_ADD_STR => {
@@ -251,6 +226,42 @@ pub fn check(bytes: &[u8]) -> Result<(usize, usize)> {
                 expect_type_on_stack(&mut stack, Type::String, "add-string", read.position() - 2)?;
                 expect_type_on_stack(&mut stack, Type::String, "add-string", read.position() - 2)?;
                 stack.push(Type::String);
+            }
+            INSN_EQ_I64 | INSN_LT_I64 | INSN_GT_I64 | INSN_LE_I64 | INSN_GE_I64 => {
+                if stack_size < 2 {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        invalid_stack("comp-int", read.position() - 2),
+                    ));
+                }
+                stack_size -= 1;
+                expect_type_on_stack(&mut stack, Type::Int, "comp-int", read.position() - 2)?;
+                expect_type_on_stack(&mut stack, Type::Int, "comp-int", read.position() - 2)?;
+                stack.push(Type::Int);
+            }
+            INSN_EQ_F64 | INSN_LT_F64 | INSN_GT_F64 | INSN_LE_F64 | INSN_GE_F64 => {
+                if stack_size < 2 {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        invalid_stack("comp-float", read.position() - 2),
+                    ));
+                }
+                stack_size -= 1;
+                expect_type_on_stack(&mut stack, Type::Float, "comp-float", read.position() - 2)?;
+                expect_type_on_stack(&mut stack, Type::Float, "comp-float", read.position() - 2)?;
+                stack.push(Type::Int);
+            }
+            INSN_EQ_STR => {
+                if stack_size < 2 {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        invalid_stack("comp-string", read.position() - 2),
+                    ));
+                }
+                stack_size -= 1;
+                expect_type_on_stack(&mut stack, Type::String, "comp-string", read.position() - 2)?;
+                expect_type_on_stack(&mut stack, Type::String, "comp-string", read.position() - 2)?;
+                stack.push(Type::Int);
             }
             _ => {
                 return Err(Error::new(
