@@ -487,6 +487,21 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
                 }
                 stack.push(Type::String);
             }
+            "%drop" => {
+                if flags.verify {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        "Feature only available in noverify mode",
+                    ));
+                }
+                if stack.is_empty() {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        "Cannot pop from empty type stack",
+                    ));
+                }
+                stack.pop().unwrap();
+            }
             _ => {
                 if let Some(label) = token.strip_prefix(':') {
                     labels.insert(label.to_string(), byte_index);
