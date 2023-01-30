@@ -4,9 +4,10 @@ detect:
     filename: "\\.roth$"
 
 rules:
-    - statement: "\\b(pop|ldc|swp|dup|abort|exit|panic|ln|input|print)\\b"
-    - identifier: "[:@]\\S+"
-    - symbol.operator: "[-+/*]"
+    - type.keyword: "(drop|ldc|swp|dup|!?if)"
+    - statement: "(abort|exit|panic|ln|input|print|~int|~float)"
+    - identifier: "[:@&]\\S+"
+    - symbol.operator: "[-+/*<>=]|<=|>="
     - constant.number: "((-?[0-9]+)(\\.[0-9]*)?)|(-?\\.[0-9]+)"
     - constant.string:
         start: "\""
