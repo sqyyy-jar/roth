@@ -93,6 +93,7 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
                             'n' => token.push('\n'),
                             'r' => token.push('\r'),
                             't' => token.push('\t'),
+                            '\\' => token.push('\\'),
                             _ => {
                                 return Err(Error::new(
                                     ErrorKind::Other,
