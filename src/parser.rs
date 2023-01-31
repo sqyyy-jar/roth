@@ -314,18 +314,12 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
             "drop" => {
                 byte_index += 2;
                 instructions.push(Insn::Drop);
-                if !flags.verify {
-                    continue;
-                }
                 expect_stack_length(&stack, 1)?;
                 let _ = stack.pop().unwrap();
             }
             "ldc" => {
                 byte_index += 2;
                 instructions.push(Insn::Ldc);
-                if !flags.verify {
-                    continue;
-                }
                 expect_stack_length(&stack, 1)?;
                 let x = stack.pop().unwrap();
                 if !x.is_int() {
@@ -338,9 +332,6 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
             "swp" => {
                 byte_index += 2;
                 instructions.push(Insn::Swp);
-                if !flags.verify {
-                    continue;
-                }
                 expect_stack_length(&stack, 2)?;
                 let x = stack.pop().unwrap();
                 let y = stack.pop().unwrap();
@@ -350,9 +341,6 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
             "dup" => {
                 byte_index += 2;
                 instructions.push(Insn::Dup);
-                if !flags.verify {
-                    continue;
-                }
                 expect_stack_length(&stack, 1)?;
                 let x = stack.pop().unwrap();
                 stack.push(x);
@@ -361,9 +349,6 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
             "if" => {
                 byte_index += 2;
                 instructions.push(Insn::JmpIf);
-                if !flags.verify {
-                    continue;
-                }
                 expect_stack_length(&stack, 2)?;
                 let x = stack.pop().unwrap();
                 let y = stack.pop().unwrap();
@@ -374,9 +359,6 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
             "!if" => {
                 byte_index += 2;
                 instructions.push(Insn::JmpIfZ);
-                if !flags.verify {
-                    continue;
-                }
                 expect_stack_length(&stack, 2)?;
                 let x = stack.pop().unwrap();
                 let y = stack.pop().unwrap();
@@ -391,9 +373,6 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
             "exit" => {
                 byte_index += 2;
                 instructions.push(Insn::Exit);
-                if !flags.verify {
-                    continue;
-                }
                 expect_stack_length(&stack, 1)?;
                 let x = stack.pop().unwrap();
                 if !x.is_int() {
@@ -403,9 +382,6 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
             "panic" => {
                 byte_index += 2;
                 instructions.push(Insn::Panic);
-                if !flags.verify {
-                    continue;
-                }
                 expect_stack_length(&stack, 1)?;
                 let x = stack.pop().unwrap();
                 if !x.is_string() {
@@ -419,9 +395,6 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
             "input" => {
                 byte_index += 2;
                 instructions.push(Insn::Input);
-                if !flags.verify {
-                    continue;
-                }
                 stack.push(Type::String);
             }
             "print" => {
@@ -437,9 +410,6 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
             "~float" => {
                 byte_index += 2;
                 instructions.push(Insn::NumConvFloat);
-                if !flags.verify {
-                    continue;
-                }
                 expect_stack_length(&stack, 1)?;
                 let x = stack.pop().unwrap();
                 if !x.is_int() {
@@ -450,9 +420,6 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
             "~int" => {
                 byte_index += 2;
                 instructions.push(Insn::NumConvInt);
-                if !flags.verify {
-                    continue;
-                }
                 expect_stack_length(&stack, 1)?;
                 let x = stack.pop().unwrap();
                 if !x.is_float() {

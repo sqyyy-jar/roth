@@ -15,7 +15,7 @@ pub fn compile(write: &mut impl Write, pre_binary: &PreBinary) -> Result<()> {
     }
     for insn in &pre_binary.instructions {
         match insn {
-            Insn::Drop => dbg!(write.write_u16::<LittleEndian>(INSN_DROP)?),
+            Insn::Drop => write.write_u16::<LittleEndian>(INSN_DROP)?,
             Insn::Ldc => write.write_u16::<LittleEndian>(INSN_LDC)?,
             Insn::Swp => write.write_u16::<LittleEndian>(INSN_SWP)?,
             Insn::Dup => write.write_u16::<LittleEndian>(INSN_DUP)?,
