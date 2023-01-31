@@ -13,7 +13,8 @@ rules:
         start: "\""
         end: "\""
         rules:
-            - constant.specialChar: "\\\\[nrt\\\"\\\\]"
+            - constant.specialChar: "\\\\[nrt\"\\\\]"
+        
     - comment:
         start: "#"
         end: "$"
