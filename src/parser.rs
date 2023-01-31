@@ -52,6 +52,10 @@ pub enum Insn {
     EqString,
 }
 
+enum PostProc {
+    LabelInser { index: usize, label: String },
+}
+
 pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
     let mut tokens = Vec::new();
     let mut token = String::new();
@@ -137,7 +141,8 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
     let mut byte_index = 0;
     let mut labels = HashMap::new();
     let mut constants = Vec::new();
-    for token in tokens {
+    let mut post_proc = Vec::new();
+    for (_, token) in tokens.into_iter().enumerate() {
         match token.as_str() {
             "+" => {
                 byte_index += 2;
@@ -328,6 +333,7 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
                         "Invalid stack to load constant",
                     ));
                 }
+                stack.push(Type::String);
             }
             "swp" => {
                 byte_index += 2;
@@ -475,26 +481,34 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
                     continue;
                 }
                 if let Some(label) = token.strip_prefix('@') {
-                    let Some(index) = labels.get(label) else {
-                        return Err(Error::new(
-                            ErrorKind::Other,
-                            format!("Unknown label '{label}'"),
-                        ));
-                    };
+                    post_proc.push(PostProc::LabelInser {
+                        index: instructions.len(),
+                        label: label.to_string(),
+                    });
+                    // let Some(index) = labels.get(label) else {
+                    //     return Err(Error::new(
+                    //         ErrorKind::Other,
+                    //         format!("Unknown label '{label}'"),
+                    //     ));
+                    // };
                     byte_index += 10 + 2;
-                    instructions.push(Insn::PushInt(*index));
+                    instructions.push(Insn::PushInt(-1));
                     instructions.push(Insn::Jmp);
                     continue;
                 }
                 if let Some(label) = token.strip_prefix('&') {
-                    let Some(index) = labels.get(label) else {
-                        return Err(Error::new(
-                            ErrorKind::Other,
-                            format!("Unknown label '{label}'"),
-                        ));
-                    };
+                    post_proc.push(PostProc::LabelInser {
+                        index: instructions.len(),
+                        label: label.to_string(),
+                    });
+                    // let Some(index) = labels.get(label) else {
+                    //     return Err(Error::new(
+                    //         ErrorKind::Other,
+                    //         format!("Unknown label '{label}'"),
+                    //     ));
+                    // };
                     byte_index += 10;
-                    instructions.push(Insn::PushInt(*index));
+                    instructions.push(Insn::PushInt(-1));
                     stack.push(Type::Int);
                     continue;
                 }
@@ -524,6 +538,19 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
                     ErrorKind::Other,
                     format!("Unknown token '{token}'"),
                 ));
+            }
+        }
+    }
+    for proc in post_proc {
+        match proc {
+            PostProc::LabelInser { index, label } => {
+                let Some(constant_index) = labels.get(&label) else {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        format!("Unknown label '{label}'"),
+                    ));
+                };
+                instructions[index] = Insn::PushInt(*constant_index as _);
             }
         }
     }
