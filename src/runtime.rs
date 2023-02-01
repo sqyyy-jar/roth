@@ -103,8 +103,23 @@ impl<'a> VirtualMachine<'a> {
                         *self.sp.sub(2) = *self.sp.sub(1);
                         *self.sp.sub(1) = tmp;
                     }
+                    INSN_TROT => {
+                        let tmp_x = *self.sp.sub(1);
+                        let tmp_y = *self.sp.sub(2);
+                        *self.sp.sub(1) = *self.sp.sub(3);
+                        *self.sp.sub(3) = tmp_y;
+                        *self.sp.sub(2) = tmp_x;
+                    }
                     INSN_DUP => {
                         *self.sp = *self.sp.sub(1);
+                        self.sp = self.sp.add(1);
+                    }
+                    INSN_DDUP => {
+                        *self.sp = *self.sp.sub(2);
+                        self.sp = self.sp.add(1);
+                    }
+                    INSN_TDUP => {
+                        *self.sp = *self.sp.sub(3);
                         self.sp = self.sp.add(1);
                     }
                     INSN_JMP => {

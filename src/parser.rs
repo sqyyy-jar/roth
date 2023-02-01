@@ -22,6 +22,9 @@ pub enum Insn {
     PushFloat(f64),
     NumConvInt,
     NumConvFloat,
+    TriRot,
+    DiDup,
+    TriDup,
     Abort,
     Exit,
     Panic,
@@ -345,13 +348,34 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
                 stack.push(x);
                 stack.push(y);
             }
+            "tRot" => {
+                byte_index += 2;
+                instructions.push(Insn::TriRot);
+                expect_stack_length(&stack, 3)?;
+                let x = stack.pop().unwrap();
+                let y = stack.pop().unwrap();
+                let z = stack.pop().unwrap();
+                stack.push(y);
+                stack.push(x);
+                stack.push(z);
+            }
             "dup" => {
                 byte_index += 2;
                 instructions.push(Insn::Dup);
                 expect_stack_length(&stack, 1)?;
-                let x = stack.pop().unwrap();
-                stack.push(x);
-                stack.push(x);
+                stack.push(stack[stack.len() - 1]);
+            }
+            "dDup" => {
+                byte_index += 2;
+                instructions.push(Insn::DiDup);
+                expect_stack_length(&stack, 2)?;
+                stack.push(stack[stack.len() - 2]);
+            }
+            "tDup" => {
+                byte_index += 2;
+                instructions.push(Insn::TriDup);
+                expect_stack_length(&stack, 3)?;
+                stack.push(stack[stack.len() - 3]);
             }
             "if" => {
                 byte_index += 2;

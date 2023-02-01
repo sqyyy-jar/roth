@@ -18,6 +18,9 @@ pub const INSN_JMP: u16 = 0x0004;
 pub const INSN_JMPIF: u16 = 0x0005;
 /// Skips next instruction if the top of the stack is zero
 pub const INSN_JMPIFZ: u16 = 0x0006;
+pub const INSN_TROT: u16 = 0x0007;
+pub const INSN_DDUP: u16 = 0x000A;
+pub const INSN_TDUP: u16 = 0x000B;
 
 const INSN_PUSH: u16 = 0x0008;
 const INSN_NUMCONV: u16 = 0x0009;

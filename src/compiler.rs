@@ -32,6 +32,9 @@ pub fn compile(write: &mut impl Write, pre_binary: &PreBinary) -> Result<()> {
             }
             Insn::NumConvInt => write.write_u16::<LittleEndian>(INSN_NUMCONV_I64)?,
             Insn::NumConvFloat => write.write_u16::<LittleEndian>(INSN_NUMCONV_F64)?,
+            Insn::TriRot => write.write_u16::<LittleEndian>(INSN_TROT)?,
+            Insn::DiDup => write.write_u16::<LittleEndian>(INSN_DDUP)?,
+            Insn::TriDup => write.write_u16::<LittleEndian>(INSN_TDUP)?,
             Insn::Abort => write.write_u16::<LittleEndian>(INSN_ABRT)?,
             Insn::Exit => write.write_u16::<LittleEndian>(INSN_EXIT)?,
             Insn::Panic => write.write_u16::<LittleEndian>(INSN_PANIC)?,
