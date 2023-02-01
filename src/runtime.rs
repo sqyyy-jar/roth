@@ -3,7 +3,7 @@ use std::{
     io::{stdin, stdout, Write},
 };
 
-use crate::bytecode::*;
+use crate::{bytecode::*, Flags};
 
 const ALIGNMENT: usize = 4096;
 
@@ -24,6 +24,7 @@ pub struct VirtualMachine<'a> {
     pub constants: Vec<String>,
     pub string_pool: Vec<String>,
     pub panic_handler: fn(PanicInfo) -> !,
+    pub flags: Flags,
 }
 
 //#[allow(unused)]
@@ -34,6 +35,7 @@ impl<'a> VirtualMachine<'a> {
         stack_size: usize,
         panic_handler: fn(PanicInfo) -> !,
         constants: Vec<String>,
+        flags: Flags,
     ) -> Self {
         let layout = unsafe { Layout::from_size_align_unchecked(stack_size, ALIGNMENT) };
         let bp = unsafe { alloc_zeroed(layout) };
@@ -47,6 +49,7 @@ impl<'a> VirtualMachine<'a> {
             constants,
             string_pool: Vec::with_capacity(0),
             code,
+            flags,
         }
     }
 
@@ -170,7 +173,7 @@ impl<'a> VirtualMachine<'a> {
                         stdout.flush().expect("Write to stdout");
                     }
                     INSN_INPUT => {
-                        let mut buf = String::with_capacity(8);
+                        let mut buf = String::with_capacity(self.flags.prealloc);
                         stdin.read_line(&mut buf).expect("Read from stdin");
                         if buf.ends_with('\n') {
                             buf.pop().unwrap();

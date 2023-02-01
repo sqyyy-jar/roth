@@ -2,6 +2,7 @@ use std::{
     env::args,
     fs::{self, File},
     io::{Cursor, Read},
+    process::exit,
 };
 
 use runtime::VirtualMachine;
@@ -16,11 +17,15 @@ pub mod util;
 
 pub struct Flags {
     pub verify: bool,
+    pub prealloc: usize,
 }
 
 impl Default for Flags {
     fn default() -> Self {
-        Self { verify: true }
+        Self {
+            verify: true,
+            prealloc: 8,
+        }
     }
 }
 
@@ -100,6 +105,7 @@ fn main() {
                 },
                 util::default_panic_handler,
                 constants.unwrap(),
+                flags,
             );
             vm.execute();
         }
@@ -149,6 +155,7 @@ fn main() {
                 stack_size,
                 util::default_panic_handler,
                 constants.unwrap(),
+                flags,
             );
             vm.execute();
         }
@@ -161,18 +168,35 @@ fn main() {
 fn help() {
     println!(
         r#"Subcommands:
-compile, c    [source file] [target file]  Compile file to binary
-run, r        [file]                       Run compiled binary
-interpret, i  [source file]                Run file directly
+compile, c    [source file] [target file] [flags]  Compile file to binary
+run, r        [file] [flags]                       Run compiled binary
+interpret, i  [source file] [flags]                Run file directly
+
+Flags:
+-verify             Enable full verification
+-noverify           Disable some amount of verification
+-prealloc [amount]  Set size of preallocated memory for strings
 "#
     );
 }
 
 fn parse_flags(flags: &mut Flags, args: &[String]) {
-    for flag in args {
+    let mut iter = args.iter();
+    while let Some(flag) = iter.next() {
         match flag.as_str() {
             "-verify" => flags.verify = true,
             "-noverify" => flags.verify = false,
+            "-prealloc" => {
+                let Some(amount) = iter.next() else {
+                    help();
+                    exit(-1);
+                };
+                let Ok(amount) = amount.parse() else {
+                    help();
+                    exit(-1);
+                };
+                flags.prealloc = amount;
+            }
             _ => {}
         }
     }
