@@ -50,6 +50,8 @@ pub const INSN_PANIC: u16 = 0x1002;
 pub const INSN_PRINTLN: u16 = 0x1003;
 /// Read line from standard input
 pub const INSN_INPUT: u16 = 0x1004;
+/// Start to remove unused strings
+pub const INSN_GC: u16 = 0x1005;
 
 const INSN_PRINT: u16 = 0x1008;
 

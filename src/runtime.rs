@@ -1,6 +1,7 @@
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
     io::{stdin, stdout, Write},
+    mem::size_of,
 };
 
 use crate::{bytecode::*, Flags};
@@ -23,6 +24,7 @@ pub struct VirtualMachine<'a> {
     pub layout: Layout,
     pub constants: Vec<String>,
     pub string_pool: Vec<String>,
+    pub string_pool_marks: Vec<u8>,
     pub panic_handler: fn(PanicInfo) -> !,
     pub flags: Flags,
 }
@@ -48,6 +50,7 @@ impl<'a> VirtualMachine<'a> {
             pc,
             constants,
             string_pool: Vec::with_capacity(0),
+            string_pool_marks: Vec::with_capacity(0),
             code,
             flags,
         }
@@ -67,6 +70,22 @@ impl<'a> VirtualMachine<'a> {
         }
     }
 
+    fn alloc_string(&mut self, value: String) -> VMValue {
+        for i in 0..self.string_pool_marks.len() {
+            if self.string_pool_marks[i] == 0 {
+                self.string_pool[i] = value;
+                return VMValue {
+                    string: &self.string_pool[i],
+                };
+            }
+        }
+        self.string_pool_marks.push(1);
+        self.string_pool.push(value);
+        VMValue {
+            string: self.string_pool.last().unwrap(),
+        }
+    }
+
     fn is_at_end(&self) -> bool {
         self.pc >= self.code.len()
     }
@@ -81,6 +100,30 @@ impl<'a> VirtualMachine<'a> {
         let insn = unsafe { *(self.code.as_ptr().add(self.pc) as *const VMValue) };
         self.pc += 8;
         insn
+    }
+
+    fn garbage_collect(&mut self) {
+        unsafe {
+            let mut gp = self.bp;
+            let spsp = self.string_pool.as_mut_ptr();
+            let spep = self.string_pool.as_mut_ptr().add(self.string_pool.len());
+            for i in 0..self.string_pool_marks.len() {
+                self.string_pool_marks[i] = 0;
+            }
+            while gp != self.sp {
+                let entry = (*gp).string;
+                if entry >= spsp && entry < spep {
+                    let offset = entry.sub(spsp as _) as usize / size_of::<String>();
+                    self.string_pool_marks[offset] = 1;
+                }
+                gp = gp.add(1);
+            }
+            for i in 0..self.string_pool_marks.len() {
+                if self.string_pool_marks[i] == 0 {
+                    self.string_pool[i] = String::with_capacity(0);
+                }
+            }
+        }
     }
 
     pub fn execute(&mut self) {
@@ -181,12 +224,10 @@ impl<'a> VirtualMachine<'a> {
                         if buf.ends_with('\r') {
                             buf.pop().unwrap();
                         }
-                        self.string_pool.push(buf);
-                        *self.sp = VMValue {
-                            string: self.string_pool.last().unwrap(),
-                        };
+                        *self.sp = self.alloc_string(buf);
                         self.sp = self.sp.add(1);
                     }
+                    INSN_GC => self.garbage_collect(),
                     INSN_PRINT_I64 => {
                         self.sp = self.sp.sub(1);
                         stdout
@@ -251,10 +292,8 @@ impl<'a> VirtualMachine<'a> {
                     INSN_ADD_STR => {
                         let x = self.pop().string;
                         let y = self.pop().string;
-                        self.string_pool.push((*y).clone() + (*x).as_str());
-                        self.push(VMValue {
-                            string: self.string_pool.last().unwrap(),
-                        });
+                        let a = self.alloc_string((*y).clone() + (*x).as_str());
+                        self.push(a);
                     }
                     INSN_EQ_I64 => {
                         let x = self.pop().int;
