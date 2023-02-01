@@ -25,11 +25,21 @@
 | `abort`  | Abort the virtual machine                                                                 |
 |  `exit`  | Exit the virtual machine with the exit code on top of the stack                           |
 | `panic`  | Panic virtual machine with the message on top of the stack                                |
+|   `gc`   | Run the garbage collector                                                                 |
 |   `ln`   | Write a newline to standard output                                                        |
 | `input`  | Read a line from standard input                                                           |
 | `print`  | Write the string on top of the stack to standard output                                   |
 | `~float` | Convert the integer on top of the stack to a float                                        |
 |  `~int`  | Convert the float on top of the stack to an integer                                       |
+
+## No verify instructions
+
+|   Name   | Description                                            |
+| :------: | ------------------------------------------------------ |
+| `%drop`  | Drop an element from the compile-time type stack       |
+|  `%int`  | Push the integer type onto the compile-time type stack |
+| `%float` | Push the float type onto the compile-time type stack   |
+|  `%str`  | Push the string type onto the compile-time type stack  |
 
 ## Constants
 
