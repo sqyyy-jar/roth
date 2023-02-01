@@ -20,6 +20,7 @@ pub struct VirtualMachine<'a> {
     pub pc: usize,
     pub code: &'a [u8],
     pub stack_size: usize,
+    pub layout: Layout,
     pub constants: Vec<String>,
     pub string_pool: Vec<String>,
     pub panic_handler: fn(PanicInfo) -> !,
@@ -40,6 +41,7 @@ impl<'a> VirtualMachine<'a> {
             bp: bp as _,
             sp: bp as _,
             stack_size,
+            layout,
             panic_handler,
             pc,
             constants,
@@ -339,12 +341,7 @@ impl<'a> VirtualMachine<'a> {
 
 impl Drop for VirtualMachine<'_> {
     fn drop(&mut self) {
-        unsafe {
-            dealloc(
-                self.bp as _,
-                Layout::from_size_align_unchecked(self.stack_size, ALIGNMENT),
-            );
-        }
+        unsafe { dealloc(self.bp as _, self.layout) };
     }
 }
 

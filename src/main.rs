@@ -139,7 +139,7 @@ fn main() {
                     println!("Invalid bytecode: {err}");
                     return;
                 }
-                check.unwrap().0
+                check.unwrap().0.max(4096)
             } else {
                 4096 * 16
             };
