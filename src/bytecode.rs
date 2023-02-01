@@ -9,14 +9,19 @@ const FLAG_F64: u16 = (TYPE_F64 as u16) << 8;
 const FLAG_STR: u16 = (TYPE_STR as u16) << 8;
 
 // Memory operations
+/// Drop top of the stack
 pub const INSN_DROP: u16 = 0x0000;
+/// Load constant
 pub const INSN_LDC: u16 = 0x0001;
+/// Swap top two element on the stack
 pub const INSN_SWP: u16 = 0x0002;
+/// Duplicate top element on the stack
 pub const INSN_DUP: u16 = 0x0003;
+/// Jump to address on top of the stack
 pub const INSN_JMP: u16 = 0x0004;
-/// Skips next instruction if the top of the stack is non-zero
+/// Jump to address on top of the stack if the second element on the stack is non-zero
 pub const INSN_JMPIF: u16 = 0x0005;
-/// Skips next instruction if the top of the stack is zero
+/// Jump to address on top of the stack if the second element on the stack is zero
 pub const INSN_JMPIFZ: u16 = 0x0006;
 pub const INSN_TROT: u16 = 0x0007;
 pub const INSN_DDUP: u16 = 0x000A;
@@ -35,16 +40,24 @@ pub const INSN_NUMCONV_I64: u16 = INSN_NUMCONV | FLAG_I64;
 pub const INSN_NUMCONV_F64: u16 = INSN_NUMCONV | FLAG_F64;
 
 // System operations
+/// Abort virtual machine
 pub const INSN_ABRT: u16 = 0x1000;
+/// Exit virtual machine
 pub const INSN_EXIT: u16 = 0x1001;
+/// Panic virtual machine
 pub const INSN_PANIC: u16 = 0x1002;
+/// Print newline to standard output
 pub const INSN_PRINTLN: u16 = 0x1003;
+/// Read line from standard input
 pub const INSN_INPUT: u16 = 0x1004;
 
 const INSN_PRINT: u16 = 0x1008;
 
+/// Print integer to standard output
 pub const INSN_PRINT_I64: u16 = INSN_PRINT | FLAG_I64;
+/// Print float to standard output
 pub const INSN_PRINT_F64: u16 = INSN_PRINT | FLAG_F64;
+/// Print string to standard output
 pub const INSN_PRINT_STR: u16 = INSN_PRINT | FLAG_STR;
 
 // Arithmetic operations
