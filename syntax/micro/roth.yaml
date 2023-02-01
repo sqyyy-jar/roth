@@ -5,7 +5,7 @@ detect:
 
 rules:
     - type.keyword: "(drop|ldc|swp|tRot|dup|dDup|tDup|!?if|%int|%float|%str|%drop)"
-    - statement: "(abort|exit|panic|ln|input|print|~int|~float)"
+    - statement: "(abort|exit|panic|ln|input|gc|print|~int|~float)"
     - identifier: "[:@&]\\S+"
     - symbol.operator: "[-+/*<>=]|<=|>="
     - constant.number: "((-?[0-9]+)(\\.[0-9]*)?)|(-?\\.[0-9]+)"
