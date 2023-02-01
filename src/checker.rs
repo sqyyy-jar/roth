@@ -175,6 +175,7 @@ pub fn check(bytes: &[u8]) -> Result<(usize, usize)> {
             INSN_INPUT => {
                 stack.push(Type::String);
             }
+            INSN_GC => {}
             INSN_PRINT_I64 => {
                 if stack.is_empty() {
                     return Err(Error::new(

@@ -102,7 +102,7 @@ impl<'a> VirtualMachine<'a> {
         insn
     }
 
-    fn garbage_collect(&mut self) {
+    fn collect_garbage(&mut self) {
         unsafe {
             let mut gp = self.bp;
             let spsp = self.string_pool.as_mut_ptr();
@@ -227,7 +227,7 @@ impl<'a> VirtualMachine<'a> {
                         *self.sp = self.alloc_string(buf);
                         self.sp = self.sp.add(1);
                     }
-                    INSN_GC => self.garbage_collect(),
+                    INSN_GC => self.collect_garbage(),
                     INSN_PRINT_I64 => {
                         self.sp = self.sp.sub(1);
                         stdout

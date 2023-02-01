@@ -40,6 +40,7 @@ pub fn compile(write: &mut impl Write, pre_binary: &PreBinary) -> Result<()> {
             Insn::Panic => write.write_u16::<LittleEndian>(INSN_PANIC)?,
             Insn::Println => write.write_u16::<LittleEndian>(INSN_PRINTLN)?,
             Insn::Input => write.write_u16::<LittleEndian>(INSN_INPUT)?,
+            Insn::Gc => write.write_u16::<LittleEndian>(INSN_GC)?,
             Insn::PrintInt => write.write_u16::<LittleEndian>(INSN_PRINT_I64)?,
             Insn::PrintFloat => write.write_u16::<LittleEndian>(INSN_PRINT_F64)?,
             Insn::PrintString => write.write_u16::<LittleEndian>(INSN_PRINT_STR)?,

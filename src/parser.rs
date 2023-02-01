@@ -30,6 +30,7 @@ pub enum Insn {
     Panic,
     Println,
     Input,
+    Gc,
     PrintInt,
     PrintFloat,
     PrintString,
@@ -427,6 +428,10 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
                 byte_index += 2;
                 instructions.push(Insn::Input);
                 stack.push(Type::String);
+            }
+            "gc" => {
+                byte_index += 2;
+                instructions.push(Insn::Gc);
             }
             "print" => {
                 byte_index += 2;
