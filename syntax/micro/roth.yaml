@@ -4,7 +4,7 @@ detect:
     filename: "\\.roth$"
 
 rules:
-    - type.keyword: "(drop|ldc|swp|dup|!?if|%int|%float|%str|%drop)"
+    - type.keyword: "(drop|ldc|swp|tRot|dup|dDup|tDup|!?if|%int|%float|%str|%drop)"
     - statement: "(abort|exit|panic|ln|input|print|~int|~float)"
     - identifier: "[:@&]\\S+"
     - symbol.operator: "[-+/*<>=]|<=|>="
