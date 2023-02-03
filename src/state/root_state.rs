@@ -2,11 +2,13 @@ use std::collections::HashMap;
 
 use crate::{
     error::{Error, Result},
-    syntax::{CodeElement, ComposeType, Instruction},
+    syntax::{CodeElement, ComposeType, Instruction, IfStatement},
     util::source::Source,
 };
 
-use super::{function_state::FunctionState, string_state::StringState, Env, State, Status};
+use super::{
+    function_state::FunctionState, if_state::IfState, string_state::StringState, Env, State, Status,
+};
 
 /// Holds:
 /// * `Instruction`s or `State`s (function, if, while) in the root element
@@ -17,7 +19,7 @@ pub struct RootState {
     status: Status,
     _types: HashMap<String, ComposeType>,
     _functions: Vec<FunctionState>,
-    _code: Vec<CodeElement>,
+    code: Vec<CodeElement>,
 }
 
 impl RootState {
@@ -33,10 +35,15 @@ impl RootState {
                 match result {
                     State::Root(_) => panic!("received root state"),
                     State::Function(_) => todo!(),
-                    State::If(_) => todo!(),
+                    State::If(it) => {
+                        self.code.push(CodeElement::IfStatement(IfStatement {
+                            span: it.span.expect("if span"),
+                            code: it.code,
+                        }));
+                    }
                     State::While(_) => todo!(),
                     State::String(it) => {
-                        self._code.push(CodeElement::Instruction(
+                        self.code.push(CodeElement::Instruction(
                             it.result.expect("string state result"),
                         ));
                         if env.source.has_next() {
@@ -60,7 +67,7 @@ impl RootState {
             if !env.source.has_next() || env.source.peek().unwrap().is_whitespace() {
                 let was_whitespace = env.source.has_next();
                 if was_whitespace {
-                    env.source.advance();
+                    env.source.consume_whitespace();
                 }
                 if buf.is_empty() {
                     if !env.source.has_next() {
@@ -70,7 +77,7 @@ impl RootState {
                 }
                 if buf.contains('.') {
                     if let Ok(float) = buf.parse() {
-                        self._code
+                        self.code
                             .push(CodeElement::Instruction(Instruction::FloatLiteral {
                                 span: index..env.source.index(),
                                 value: float,
@@ -80,7 +87,7 @@ impl RootState {
                     };
                 }
                 if let Ok(int) = buf.parse() {
-                    self._code
+                    self.code
                         .push(CodeElement::Instruction(Instruction::IntLiteral {
                             span: index..env.source.index(),
                             value: int,
@@ -91,8 +98,15 @@ impl RootState {
                 match buf.as_str() {
                     "type" => todo!("Implement compound types"),
                     "def" => todo!("Implement functions"),
+                    "if" => {
+                        self.status = Status::Waiting;
+                        env.tmp_stack
+                            .push(State::If(IfState::with_start_index(index)));
+                        return Ok(false);
+                    }
+                    "while" => todo!("Implement while"),
                     _ => {
-                        self._code.push(CodeElement::Instruction(Instruction::Call {
+                        self.code.push(CodeElement::Instruction(Instruction::Call {
                             span: index..env.source.index(),
                         }));
                         buf.clear();
@@ -102,6 +116,15 @@ impl RootState {
             }
             let c = env.source.peek().unwrap();
             match c {
+                '#' => {
+                    while env.source.has_next() {
+                        let c = env.source.peek().unwrap();
+                        env.source.advance();
+                        if c == '\n' {
+                            break;
+                        }
+                    }
+                }
                 ')' | ']' | '}' => {
                     let index = env.source.index();
                     env.source.advance();
@@ -109,6 +132,22 @@ impl RootState {
                         span: index..env.source.index(),
                     });
                 }
+                '{' => match buf.as_str() {
+                    "if" => {
+                        self.status = Status::Waiting;
+                        env.tmp_stack
+                            .push(State::If(IfState::with_start_index(index)));
+                        return Ok(false);
+                    }
+                    "while" => todo!(),
+                    _ => {
+                        let index = env.source.index();
+                        env.source.advance();
+                        return Err(Error::OpeningBracketOutOfContext {
+                            span: index..env.source.index(),
+                        });
+                    }
+                },
                 '"' => {
                     let index = env.source.index();
                     if !buf.is_empty() {
@@ -145,7 +184,7 @@ impl Default for RootState {
             status: Status::New,
             _types: HashMap::with_capacity(0),
             _functions: Vec::with_capacity(0),
-            _code: Vec::with_capacity(0),
+            code: Vec::with_capacity(0),
         }
     }
 }
