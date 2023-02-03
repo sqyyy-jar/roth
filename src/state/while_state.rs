@@ -1,10 +1,6 @@
-use crate::{
-    error::Result,
-    syntax::{CodeElement, Span},
-    util::source::Source,
-};
+use crate::{error::Result, util::source::Source};
 
-use super::Env;
+use super::{loop_state::LoopState, Env};
 
 /// Holds:
 /// * previous stack size
@@ -13,13 +9,18 @@ use super::Env;
 /// Can be incomplete at any time
 #[derive(Debug)]
 pub struct WhileState {
-    _span: Option<Span>,
-    _code: Vec<CodeElement>,
+    pub(super) inner: LoopState,
 }
 
 impl WhileState {
+    pub fn with_start_index(start_index: usize) -> Self {
+        Self {
+            inner: LoopState::with_start_index(start_index),
+        }
+    }
+
     /// Returns wether the state has finished or not
-    pub fn process<T: Source>(&mut self, _env: &mut Env<T>) -> Result<bool> {
-        todo!()
+    pub fn process<T: Source>(&mut self, env: &mut Env<T>) -> Result<bool> {
+        self.inner.process(env)
     }
 }
