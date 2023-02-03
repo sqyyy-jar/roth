@@ -13,8 +13,12 @@ pub enum Error {
     InvalidEscapeCharacterInString { span: Span },
     #[error("ClosingBracketOutOfContext: {span:?}")]
     ClosingBracketOutOfContext { span: Span },
+    #[error("OpeningBracketOutOfContext: {span:?}")]
+    OpeningBracketOutOfContext { span: Span },
     #[error("UnexpectedEndOfSource: {span:?}")]
     UnexpectedEndOfSource { span: Span },
+    #[error("UnexpectedCharacter: {span:?}")]
+    UnexpectedCharacter { span: Span },
     #[error("MissingWhitespaceBetweenTokens: {span:?}")]
     MissingWhitespaceBetweenTokens { span: Span },
 }
@@ -42,15 +46,26 @@ impl Error {
                 .with_code("E02")
                 .with_labels(vec![Label::primary((), span.clone())
                     .with_message("this bracket is not allowed here")]),
+            Self::OpeningBracketOutOfContext { span } => diagnostic
+                .with_message("opening bracket was used out of context")
+                .with_code("E03")
+                .with_labels(vec![Label::primary((), span.clone())
+                    .with_message("this bracket is not allowed here")]),
             Self::UnexpectedEndOfSource { span } => diagnostic
                 .with_message("end of source was reached unexpectedly")
-                .with_code("E03")
+                .with_code("E04")
                 .with_labels(vec![
                     Label::primary((), span.clone()).with_message("current token")
                 ]),
+            Self::UnexpectedCharacter { span } => diagnostic
+                .with_message("unexpected character in source")
+                .with_code("E05")
+                .with_labels(vec![
+                    Label::primary((), span.clone()).with_message("unexpected character")
+                ]),
             Self::MissingWhitespaceBetweenTokens { span } => diagnostic
                 .with_message("missing whitespace between tokens")
-                .with_code("E04")
+                .with_code("E06")
                 .with_labels(vec![
                     Label::primary((), span.clone()).with_message("this is not allowed")
                 ])
