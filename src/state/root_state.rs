@@ -44,11 +44,16 @@ impl RootState {
         }
         let mut index = env.source.index();
         let mut buf = String::new();
-        while env.source.has_next() {
-            let c = env.source.peek().unwrap();
-            if c.is_whitespace() {
-                env.source.advance();
+        loop {
+            if !env.source.has_next() || env.source.peek().unwrap().is_whitespace() {
+                let was_whitespace = env.source.has_next();
+                if was_whitespace {
+                    env.source.advance();
+                }
                 if buf.is_empty() {
+                    if !env.source.has_next() {
+                        break;
+                    }
                     continue;
                 }
                 if buf.contains('.') {
@@ -58,7 +63,6 @@ impl RootState {
                                 span: index..env.source.index(),
                                 value: float,
                             }));
-                        index = env.source.index();
                         buf.clear();
                         continue;
                     };
@@ -69,23 +73,22 @@ impl RootState {
                             span: index..env.source.index(),
                             value: int,
                         }));
-                    index = env.source.index();
                     buf.clear();
                     continue;
                 };
                 match buf.as_str() {
-                    "type" => todo!("Implement compund types"),
-                    "func" => {}
+                    "type" => todo!("Implement compound types"),
+                    "func" => todo!("Implement functions"),
                     _ => {
                         self._code.push(CodeElement::Instruction(Instruction::Call {
                             span: index..env.source.index(),
                         }));
-                        index = env.source.index();
                         buf.clear();
                         continue;
                     }
                 }
             }
+            let c = env.source.peek().unwrap();
             match c {
                 ')' | ']' | '}' => {
                     let index = env.source.index();
