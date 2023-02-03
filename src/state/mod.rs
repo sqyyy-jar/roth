@@ -10,6 +10,7 @@ pub mod if_state;
 pub mod root_state;
 pub mod string_state;
 pub mod while_state;
+pub mod loop_state;
 
 /// Holds:
 /// * the stack of all states

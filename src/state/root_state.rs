@@ -2,12 +2,13 @@ use std::collections::HashMap;
 
 use crate::{
     error::{Error, Result},
-    syntax::{CodeElement, ComposeType, Instruction, IfStatement},
+    syntax::{CodeElement, ComposeType, IfStatement, Instruction, WhileStatement},
     util::source::Source,
 };
 
 use super::{
-    function_state::FunctionState, if_state::IfState, string_state::StringState, Env, State, Status,
+    function_state::FunctionState, if_state::IfState, string_state::StringState,
+    while_state::WhileState, Env, State, Status,
 };
 
 /// Holds:
@@ -37,11 +38,16 @@ impl RootState {
                     State::Function(_) => todo!(),
                     State::If(it) => {
                         self.code.push(CodeElement::IfStatement(IfStatement {
-                            span: it.span.expect("if span"),
-                            code: it.code,
+                            span: it.inner.span.expect("if span"),
+                            code: it.inner.code,
                         }));
                     }
-                    State::While(_) => todo!(),
+                    State::While(it) => {
+                        self.code.push(CodeElement::WhileStatement(WhileStatement {
+                            span: it.inner.span.expect("while span"),
+                            code: it.inner.code,
+                        }));
+                    }
                     State::String(it) => {
                         self.code.push(CodeElement::Instruction(
                             it.result.expect("string state result"),
@@ -104,7 +110,12 @@ impl RootState {
                             .push(State::If(IfState::with_start_index(index)));
                         return Ok(false);
                     }
-                    "while" => todo!("Implement while"),
+                    "while" => {
+                        self.status = Status::Waiting;
+                        env.tmp_stack
+                            .push(State::While(WhileState::with_start_index(index)));
+                        return Ok(false);
+                    }
                     _ => {
                         self.code.push(CodeElement::Instruction(Instruction::Call {
                             span: index..env.source.index(),
@@ -139,7 +150,12 @@ impl RootState {
                             .push(State::If(IfState::with_start_index(index)));
                         return Ok(false);
                     }
-                    "while" => todo!(),
+                    "while" => {
+                        self.status = Status::Waiting;
+                        env.tmp_stack
+                            .push(State::While(WhileState::with_start_index(index)));
+                        return Ok(false);
+                    }
                     _ => {
                         let index = env.source.index();
                         env.source.advance();
