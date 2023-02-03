@@ -4,7 +4,7 @@ use crate::{
     util::source::Source,
 };
 
-use super::Env;
+use super::{Env, Status};
 
 /// Holds:
 /// * the function signature
@@ -13,6 +13,7 @@ use super::Env;
 /// Can be incomplete at any time
 #[derive(Debug)]
 pub struct FunctionState {
+    _status: Status,
     _span: Option<Span>,
     _name: Option<Span>,
     _input: Vec<TypeElement>,

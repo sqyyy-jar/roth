@@ -1,11 +1,12 @@
 use crate::{
     error::{Error, Result},
-    syntax::{CodeElement, IfStatement, Instruction, Span, WhileStatement},
+    syntax::{CodeElement, IfStatement, Span, WhileStatement},
     util::source::Source,
 };
 
 use super::{
-    if_state::IfState, string_state::StringState, while_state::WhileState, Env, State, Status,
+    if_state::IfState, parse_buf, string_state::StringState, while_state::WhileState, Env, State,
+    Status,
 };
 
 /// Holds:
@@ -103,7 +104,7 @@ impl LoopState {
                     }
                     continue;
                 }
-                if self.parse_buf(env, index, &mut buf)? {
+                if parse_buf(&mut self.status, &mut self.code, env, index, &mut buf)? {
                     return Ok(false);
                 }
             }
@@ -119,7 +120,9 @@ impl LoopState {
                     }
                 }
                 '}' => {
-                    if !buf.is_empty() && self.parse_buf(env, index, &mut buf)? {
+                    if !buf.is_empty()
+                        && parse_buf(&mut self.status, &mut self.code, env, index, &mut buf)?
+                    {
                         return Ok(false);
                     }
                     env.source.advance();
@@ -183,56 +186,5 @@ impl LoopState {
         Err(Error::UnexpectedEndOfSource {
             span: index..env.source.index(),
         })
-    }
-
-    fn parse_buf<T: Source>(
-        &mut self,
-        env: &mut Env<T>,
-        index: usize,
-        buf: &mut String,
-    ) -> Result<bool> {
-        if buf.contains('.') {
-            if let Ok(float) = buf.parse() {
-                self.code
-                    .push(CodeElement::Instruction(Instruction::FloatLiteral {
-                        span: index..env.source.index(),
-                        value: float,
-                    }));
-                buf.clear();
-                return Ok(false);
-            };
-        }
-        if let Ok(int) = buf.parse() {
-            self.code
-                .push(CodeElement::Instruction(Instruction::IntLiteral {
-                    span: index..env.source.index(),
-                    value: int,
-                }));
-            buf.clear();
-            return Ok(false);
-        };
-        match buf.as_str() {
-            "type" => todo!("Implement compound types"),
-            "def" => todo!("Implement functions"),
-            "if" => {
-                self.status = Status::Waiting;
-                env.tmp_stack
-                    .push(State::If(IfState::with_start_index(index)));
-                Ok(true)
-            }
-            "while" => {
-                self.status = Status::Waiting;
-                env.tmp_stack
-                    .push(State::While(WhileState::with_start_index(index)));
-                Ok(true)
-            }
-            _ => {
-                self.code.push(CodeElement::Instruction(Instruction::Call {
-                    span: index..env.source.index(),
-                }));
-                buf.clear();
-                Ok(false)
-            }
-        }
     }
 }
