@@ -11,6 +11,10 @@ pub enum Error {
     NewlineInStringLiteral { span: Span },
     #[error("InvalidEscapeCharacterInString: {span:?}")]
     InvalidEscapeCharacterInString { span: Span },
+    #[error("FunctionNameStartingWithNumber: {span:?}")]
+    FunctionNameStartingWithNumber { span: Span },
+    #[error("FunctionNameIsKeyword: {span:?}")]
+    FunctionNameIsKeyword { span: Span },
     #[error("ClosingBracketOutOfContext: {span:?}")]
     ClosingBracketOutOfContext { span: Span },
     #[error("OpeningBracketOutOfContext: {span:?}")]
@@ -41,31 +45,45 @@ impl Error {
                 .with_notes(vec![
                     "try to use '\\\\' to not escape characters".to_string()
                 ]),
+            Self::FunctionNameStartingWithNumber { span } => diagnostic
+                .with_message("invalid function name was used in function declaration")
+                .with_code("E02")
+                .with_labels(vec![Label::primary((), span.clone())
+                    .with_message("this cannot start with a number")])
+                .with_notes(vec![
+                    "try to put something in front of the number".to_string()
+                ]),
+            Self::FunctionNameIsKeyword { span } => diagnostic
+                .with_message("invalid function name was used in function declaration")
+                .with_code("E03")
+                .with_labels(vec![Label::primary((), span.clone())
+                    .with_message("this is already used by a keyword")])
+                .with_notes(vec!["try to use something different".to_string()]),
             Self::ClosingBracketOutOfContext { span } => diagnostic
                 .with_message("closing bracket was used out of context")
-                .with_code("E02")
+                .with_code("E04")
                 .with_labels(vec![Label::primary((), span.clone())
                     .with_message("this bracket is not allowed here")]),
             Self::OpeningBracketOutOfContext { span } => diagnostic
                 .with_message("opening bracket was used out of context")
-                .with_code("E03")
+                .with_code("E05")
                 .with_labels(vec![Label::primary((), span.clone())
                     .with_message("this bracket is not allowed here")]),
             Self::UnexpectedEndOfSource { span } => diagnostic
                 .with_message("end of source was reached unexpectedly")
-                .with_code("E04")
+                .with_code("E06")
                 .with_labels(vec![
-                    Label::primary((), span.clone()).with_message("current token")
+                    Label::primary((), span.clone()).with_message("end of source")
                 ]),
             Self::UnexpectedCharacter { span } => diagnostic
                 .with_message("unexpected character in source")
-                .with_code("E05")
+                .with_code("E07")
                 .with_labels(vec![
                     Label::primary((), span.clone()).with_message("unexpected character")
                 ]),
             Self::MissingWhitespaceBetweenTokens { span } => diagnostic
                 .with_message("missing whitespace between tokens")
-                .with_code("E06")
+                .with_code("E08")
                 .with_labels(vec![
                     Label::primary((), span.clone()).with_message("this is not allowed")
                 ])
