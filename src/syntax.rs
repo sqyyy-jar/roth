@@ -31,11 +31,13 @@ pub enum Instruction {
 #[derive(Debug)]
 pub struct IfStatement {
     pub span: Span,
+    pub code: Vec<CodeElement>,
 }
 
 #[derive(Debug)]
 pub struct WhileStatement {
     pub span: Span,
+    pub code: Vec<CodeElement>,
 }
 
 #[derive(Debug)]

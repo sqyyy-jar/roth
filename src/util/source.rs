@@ -8,6 +8,15 @@ pub trait Source {
     fn peek(&mut self) -> Option<char>;
 
     fn advance(&mut self);
+
+    fn consume_whitespace(&mut self) {
+        while self.has_next() {
+            if !self.peek().unwrap().is_whitespace() {
+                break;
+            }
+            self.advance();
+        }
+    }
 }
 
 pub struct CharsSource<'a> {
