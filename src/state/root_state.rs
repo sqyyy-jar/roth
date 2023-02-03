@@ -19,7 +19,7 @@ use super::{
 pub struct RootState {
     status: Status,
     _types: HashMap<String, ComposeType>,
-    _functions: Vec<FunctionState>,
+    functions: Vec<FunctionState>,
     code: Vec<CodeElement>,
 }
 
@@ -35,7 +35,9 @@ impl RootState {
                 let result = env.result.take().expect("result");
                 match result {
                     State::Root(_) => panic!("received root state"),
-                    State::Function(_) => todo!(),
+                    State::Function(it) => {
+                        self.functions.push(it);
+                    }
                     State::If(it) => {
                         self.code.push(CodeElement::IfStatement(IfStatement {
                             span: it.inner.span.expect("if span"),
@@ -108,7 +110,7 @@ impl RootState {
                         env.tmp_stack
                             .push(State::Function(FunctionState::with_start_index(index)));
                         return Ok(false);
-                    },
+                    }
                     "if" => {
                         self.status = Status::Waiting;
                         env.tmp_stack
@@ -204,7 +206,7 @@ impl Default for RootState {
         Self {
             status: Status::New,
             _types: HashMap::with_capacity(0),
-            _functions: Vec::with_capacity(0),
+            functions: Vec::with_capacity(0),
             code: Vec::with_capacity(0),
         }
     }

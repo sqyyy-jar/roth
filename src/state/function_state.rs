@@ -1,10 +1,13 @@
 use crate::{
     error::{Error, Result},
-    syntax::{CodeElement, Span, TypeElement},
+    syntax::{CodeElement, IfStatement, Span, Type, TypeElement, WhileStatement},
     util::source::Source,
 };
 
-use super::{Env, Status};
+use super::{
+    if_state::IfState, parse_buf, string_state::StringState, while_state::WhileState, Env, State,
+    Status,
+};
 
 /// Holds:
 /// * the function signature
@@ -14,24 +17,24 @@ use super::{Env, Status};
 #[derive(Debug)]
 pub struct FunctionState {
     status: Status,
-    _start_index: usize,
-    pub(super) _span: Option<Span>,
+    start_index: usize,
+    pub(super) span: Option<Span>,
     pub(super) name: Option<Span>,
-    pub(super) _input: Vec<TypeElement>,
-    pub(super) _output: Vec<TypeElement>,
-    pub(super) _code: Vec<CodeElement>,
+    pub(super) input: Option<Vec<TypeElement>>,
+    pub(super) output: Option<Vec<TypeElement>>,
+    pub(super) code: Vec<CodeElement>,
 }
 
 impl FunctionState {
     pub fn with_start_index(start_index: usize) -> Self {
         Self {
             status: Status::New,
-            _start_index: start_index,
-            _span: None,
+            start_index,
+            span: None,
             name: None,
-            _input: Vec::with_capacity(0),
-            _output: Vec::with_capacity(0),
-            _code: Vec::with_capacity(0),
+            input: None,
+            output: None,
+            code: Vec::with_capacity(0),
         }
     }
 
@@ -46,9 +49,7 @@ impl FunctionState {
                 loop {
                     if !env.source.has_next() {
                         let index = env.source.index();
-                        return Err(Error::UnexpectedEndOfSource {
-                            span: index..index,
-                        });
+                        return Err(Error::UnexpectedEndOfSource { span: index..index });
                     }
                     let c = env.source.peek().unwrap();
                     match c {
@@ -91,21 +92,206 @@ impl FunctionState {
                 self.name = Some(index..env.source.index());
                 env.source.consume_whitespace();
                 expect_char(env, '(')?;
-                todo!("function loading")
+                let input = self.parse_types(env)?;
+                env.source.consume_whitespace();
+                expect_char(env, ')')?;
+                env.source.consume_whitespace();
+                expect_char(env, '(')?;
+                let output = self.parse_types(env)?;
+                env.source.consume_whitespace();
+                expect_char(env, ')')?;
+                env.source.consume_whitespace();
+                self.input = Some(input);
+                self.output = Some(output);
+                expect_char(env, '{')?;
             }
             Status::Active => panic!("invalid status"),
-            Status::Waiting => todo!(),
+            Status::Waiting => {
+                let result = env.result.take().expect("result");
+                match result {
+                    State::Root(_) => panic!("received root state"),
+                    State::Function(_) => panic!("received function state"),
+                    State::If(it) => {
+                        self.code.push(CodeElement::IfStatement(IfStatement {
+                            span: it.inner.span.expect("if span"),
+                            code: it.inner.code,
+                        }));
+                    }
+                    State::While(it) => {
+                        self.code.push(CodeElement::WhileStatement(WhileStatement {
+                            span: it.inner.span.expect("while span"),
+                            code: it.inner.code,
+                        }));
+                    }
+                    State::String(it) => {
+                        self.code.push(CodeElement::Instruction(
+                            it.result.expect("string state result"),
+                        ));
+                        if env.source.has_next() {
+                            let index = env.source.index();
+                            let c = env.source.peek().unwrap();
+                            if !c.is_whitespace() && c != '}' {
+                                env.source.advance();
+                                return Err(Error::MissingWhitespaceBetweenTokens {
+                                    span: index..env.source.index(),
+                                });
+                            }
+                        }
+                    }
+                }
+                self.status = Status::Active;
+            }
         }
-        todo!()
+        let mut index = env.source.index();
+        let mut buf = String::new();
+        loop {
+            if !env.source.has_next() || env.source.peek().unwrap().is_whitespace() {
+                let was_whitespace = env.source.has_next();
+                if was_whitespace {
+                    env.source.consume_whitespace();
+                }
+                if buf.is_empty() {
+                    if !env.source.has_next() {
+                        break;
+                    }
+                    continue;
+                }
+                if parse_buf(&mut self.status, &mut self.code, env, index, &mut buf)? {
+                    return Ok(false);
+                }
+            }
+            let c = env.source.peek().unwrap();
+            match c {
+                '#' => {
+                    while env.source.has_next() {
+                        let c = env.source.peek().unwrap();
+                        env.source.advance();
+                        if c == '\n' {
+                            break;
+                        }
+                    }
+                }
+                '}' => {
+                    if !buf.is_empty()
+                        && parse_buf(&mut self.status, &mut self.code, env, index, &mut buf)?
+                    {
+                        return Ok(false);
+                    }
+                    env.source.advance();
+                    self.span = Some(self.start_index..index);
+                    return Ok(true);
+                }
+                ')' | ']' => {
+                    let index = env.source.index();
+                    env.source.advance();
+                    return Err(Error::ClosingBracketOutOfContext {
+                        span: index..env.source.index(),
+                    });
+                }
+                '{' => match buf.as_str() {
+                    "if" => {
+                        self.status = Status::Waiting;
+                        env.tmp_stack
+                            .push(State::If(IfState::with_start_index(index)));
+                        return Ok(false);
+                    }
+                    "while" => {
+                        self.status = Status::Waiting;
+                        env.tmp_stack
+                            .push(State::While(WhileState::with_start_index(index)));
+                        return Ok(false);
+                    }
+                    _ => {
+                        let index = env.source.index();
+                        env.source.advance();
+                        return Err(Error::OpeningBracketOutOfContext {
+                            span: index..env.source.index(),
+                        });
+                    }
+                },
+                '"' => {
+                    let index = env.source.index();
+                    if !buf.is_empty() {
+                        env.source.advance();
+                        return Err(Error::MissingWhitespaceBetweenTokens {
+                            span: index..env.source.index(),
+                        });
+                    }
+                    env.source.advance();
+                    self.status = Status::Waiting;
+                    env.tmp_stack.push(State::String(StringState {
+                        start: index,
+                        value_start: env.source.index(),
+                        result: None,
+                    }));
+                    return Ok(false);
+                }
+                _ => {
+                    if buf.is_empty() {
+                        index = env.source.index();
+                    }
+                    env.source.advance();
+                    buf.push(c);
+                }
+            }
+        }
+        let index = env.source.index();
+        Err(Error::UnexpectedEndOfSource { span: index..index })
+    }
+
+    fn parse_types<T: Source>(&mut self, env: &mut Env<T>) -> Result<Vec<TypeElement>> {
+        let mut types = Vec::with_capacity(0);
+        let mut buf = String::new();
+        let mut index = env.source.index();
+        loop {
+            if !env.source.has_next() {
+                let index = env.source.index();
+                return Err(Error::UnexpectedEndOfSource { span: index..index });
+            }
+            let c = env.source.peek().unwrap();
+            match c {
+                ')' => {
+                    if !buf.is_empty() {
+                        types.push(parse_type(index..env.source.index(), &buf));
+                    }
+                    break;
+                }
+                ',' => {
+                    if buf.is_empty() {
+                        env.source.advance();
+                        continue;
+                    }
+                    types.push(parse_type(index..env.source.index(), &buf));
+                    env.source.advance();
+                    buf.clear();
+                    env.source.consume_whitespace();
+                    index = env.source.index();
+                }
+                _ => {
+                    if c.is_whitespace() {
+                        if buf.is_empty() {
+                            env.source.advance();
+                            continue;
+                        }
+                        types.push(parse_type(index..env.source.index(), &buf));
+                        env.source.advance();
+                        buf.clear();
+                        env.source.consume_whitespace();
+                        continue;
+                    }
+                    buf.push(c);
+                    env.source.advance();
+                }
+            }
+        }
+        Ok(types)
     }
 }
 
 fn expect_char<T: Source>(env: &mut Env<T>, c: char) -> Result<()> {
     if !env.source.has_next() {
         let index = env.source.index();
-        return Err(Error::UnexpectedEndOfSource {
-            span: index..index,
-        });
+        return Err(Error::UnexpectedEndOfSource { span: index..index });
     }
     let ac = env.source.peek().unwrap();
     if c != ac {
@@ -115,5 +301,24 @@ fn expect_char<T: Source>(env: &mut Env<T>, c: char) -> Result<()> {
             span: index..env.source.index(),
         });
     }
+    env.source.advance();
     Ok(())
+}
+
+fn parse_type(span: Span, buf: &str) -> TypeElement {
+    match buf {
+        "int" => TypeElement::Type {
+            span,
+            value: Type::Int,
+        },
+        "float" => TypeElement::Type {
+            span,
+            value: Type::Float,
+        },
+        "str" => TypeElement::Type {
+            span,
+            value: Type::String,
+        },
+        _ => TypeElement::ComposeType { span },
+    }
 }
