@@ -1,3 +1,4 @@
+use codespan_reporting::diagnostic::{Diagnostic, Label};
 use thiserror::Error;
 
 use crate::syntax::Span;
@@ -14,4 +15,46 @@ pub enum Error {
     ClosingBracketOutOfContext { span: Span },
     #[error("UnexpectedEndOfSource: {span:?}")]
     UnexpectedEndOfSource { span: Span },
+    #[error("MissingWhitespaceBetweenTokens: {span:?}")]
+    MissingWhitespaceBetweenTokens { span: Span },
+}
+
+impl Error {
+    pub fn diagnostic(&self) -> Diagnostic<()> {
+        let diagnostic = Diagnostic::error();
+        match self {
+            Self::NewlineInStringLiteral { span } => diagnostic
+                .with_message("newline was used in string literal")
+                .with_code("E00")
+                .with_labels(vec![Label::primary((), span.clone())
+                    .with_message("this newline is not allowed here")])
+                .with_notes(vec!["try to use '\\n' instead".to_string()]),
+            Self::InvalidEscapeCharacterInString { span } => diagnostic
+                .with_message("invalid escape character was used in string literal")
+                .with_code("E01")
+                .with_labels(vec![Label::primary((), span.clone())
+                    .with_message("this escape character is not valid")])
+                .with_notes(vec![
+                    "try to use '\\\\' to not escape characters".to_string()
+                ]),
+            Self::ClosingBracketOutOfContext { span } => diagnostic
+                .with_message("closing bracket was used out of context")
+                .with_code("E02")
+                .with_labels(vec![Label::primary((), span.clone())
+                    .with_message("this bracket is not allowed here")]),
+            Self::UnexpectedEndOfSource { span } => diagnostic
+                .with_message("end of source was reached unexpectedly")
+                .with_code("E03")
+                .with_labels(vec![
+                    Label::primary((), span.clone()).with_message("current token")
+                ]),
+            Self::MissingWhitespaceBetweenTokens { span } => diagnostic
+                .with_message("missing whitespace between tokens")
+                .with_code("E04")
+                .with_labels(vec![
+                    Label::primary((), span.clone()).with_message("this is not allowed")
+                ])
+                .with_notes(vec!["try to use put a space here".to_string()]),
+        }
+    }
 }
