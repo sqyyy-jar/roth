@@ -35,9 +35,21 @@ impl RootState {
                     State::Function(_) => todo!(),
                     State::If(_) => todo!(),
                     State::While(_) => todo!(),
-                    State::String(it) => self._code.push(CodeElement::Instruction(
-                        it.result.expect("string state result"),
-                    )),
+                    State::String(it) => {
+                        self._code.push(CodeElement::Instruction(
+                            it.result.expect("string state result"),
+                        ));
+                        if env.source.has_next() {
+                            let index = env.source.index();
+                            let c = env.source.peek().unwrap();
+                            if !c.is_whitespace() {
+                                env.source.advance();
+                                return Err(Error::MissingWhitespaceBetweenTokens {
+                                    span: index..env.source.index(),
+                                });
+                            }
+                        }
+                    }
                 }
                 self.status = Status::Active;
             }
@@ -78,7 +90,7 @@ impl RootState {
                 };
                 match buf.as_str() {
                     "type" => todo!("Implement compound types"),
-                    "func" => todo!("Implement functions"),
+                    "def" => todo!("Implement functions"),
                     _ => {
                         self._code.push(CodeElement::Instruction(Instruction::Call {
                             span: index..env.source.index(),
@@ -99,6 +111,12 @@ impl RootState {
                 }
                 '"' => {
                     let index = env.source.index();
+                    if !buf.is_empty() {
+                        env.source.advance();
+                        return Err(Error::MissingWhitespaceBetweenTokens {
+                            span: index..env.source.index(),
+                        });
+                    }
                     env.source.advance();
                     self.status = Status::Waiting;
                     env.tmp_stack.push(State::String(StringState {
