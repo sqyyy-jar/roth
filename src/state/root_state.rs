@@ -103,7 +103,12 @@ impl RootState {
                 };
                 match buf.as_str() {
                     "type" => todo!("Implement compound types"),
-                    "def" => todo!("Implement functions"),
+                    "def" | "fun" => {
+                        self.status = Status::Waiting;
+                        env.tmp_stack
+                            .push(State::Function(FunctionState::with_start_index(index)));
+                        return Ok(false);
+                    },
                     "if" => {
                         self.status = Status::Waiting;
                         env.tmp_stack

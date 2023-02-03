@@ -39,15 +39,14 @@ impl LoopState {
                 self.status = Status::Active;
                 env.source.consume_whitespace();
                 if !env.source.has_next() {
-                    return Err(Error::UnexpectedEndOfSource {
-                        span: self.start_index..env.source.index(),
-                    });
+                    let index = env.source.index();
+                    return Err(Error::UnexpectedEndOfSource { span: index..index });
                 }
                 let c = env.source.peek().unwrap();
                 if c != '{' {
                     let index = env.source.index();
                     env.source.advance();
-                    return Err(Error::UnexpectedEndOfSource {
+                    return Err(Error::UnexpectedCharacter {
                         span: index..env.source.index(),
                     });
                 }
@@ -183,8 +182,7 @@ impl LoopState {
                 }
             }
         }
-        Err(Error::UnexpectedEndOfSource {
-            span: index..env.source.index(),
-        })
+        let index = env.source.index();
+        Err(Error::UnexpectedEndOfSource { span: index..index })
     }
 }
