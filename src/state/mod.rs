@@ -120,8 +120,9 @@ fn parse_buf<T: Source>(
         return Ok(false);
     };
     match buf.as_str() {
-        "type" => todo!("Implement compound types"),
-        "def" => todo!("Implement functions"),
+        "type" | "def" | "fun" => Err(Error::UnexpectedToken {
+            span: index..env.source.index(),
+        }),
         "if" => {
             *status = Status::Waiting;
             env.tmp_stack

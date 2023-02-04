@@ -129,10 +129,10 @@ impl LoopState {
                     self.span = Some(self.start_index..index);
                     return Ok(true);
                 }
-                ')' | ']' => {
+                '(' | ')' | '[' | ']' => {
                     let index = env.source.index();
                     env.source.advance();
-                    return Err(Error::ClosingBracketOutOfContext {
+                    return Err(Error::UnexpectedCharacter {
                         span: index..env.source.index(),
                     });
                 }

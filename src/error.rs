@@ -23,6 +23,8 @@ pub enum Error {
     UnexpectedEndOfSource { span: Span },
     #[error("UnexpectedCharacter: {span:?}")]
     UnexpectedCharacter { span: Span },
+    #[error("UnexpectedToken: {span:?}")]
+    UnexpectedToken { span: Span },
     #[error("MissingWhitespaceBetweenTokens: {span:?}")]
     MissingWhitespaceBetweenTokens { span: Span },
 }
@@ -81,9 +83,15 @@ impl Error {
                 .with_labels(vec![
                     Label::primary((), span.clone()).with_message("unexpected character")
                 ]),
+            Self::UnexpectedToken { span } => diagnostic
+                .with_message("unexpected token in source")
+                .with_code("E08")
+                .with_labels(vec![
+                    Label::primary((), span.clone()).with_message("this token is not allowed here")
+                ]),
             Self::MissingWhitespaceBetweenTokens { span } => diagnostic
                 .with_message("missing whitespace between tokens")
-                .with_code("E08")
+                .with_code("E09")
                 .with_labels(vec![
                     Label::primary((), span.clone()).with_message("this is not allowed")
                 ])

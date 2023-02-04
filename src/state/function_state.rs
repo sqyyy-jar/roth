@@ -144,19 +144,18 @@ impl FunctionState {
         let mut buf = String::new();
         loop {
             if !env.source.has_next() || env.source.peek().unwrap().is_whitespace() {
-                let was_whitespace = env.source.has_next();
-                if was_whitespace {
-                    env.source.consume_whitespace();
-                }
                 if buf.is_empty() {
                     if !env.source.has_next() {
                         break;
                     }
+                    env.source.consume_whitespace();
                     continue;
                 }
                 if parse_buf(&mut self.status, &mut self.code, env, index, &mut buf)? {
                     return Ok(false);
                 }
+                env.source.consume_whitespace();
+                continue;
             }
             let c = env.source.peek().unwrap();
             match c {
@@ -179,10 +178,10 @@ impl FunctionState {
                     self.span = Some(self.start_index..index);
                     return Ok(true);
                 }
-                ')' | ']' => {
+                '(' | ')' | '[' | ']' => {
                     let index = env.source.index();
                     env.source.advance();
-                    return Err(Error::ClosingBracketOutOfContext {
+                    return Err(Error::UnexpectedCharacter {
                         span: index..env.source.index(),
                     });
                 }

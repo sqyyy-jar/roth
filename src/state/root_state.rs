@@ -18,7 +18,7 @@ use super::{
 #[derive(Debug)]
 pub struct RootState {
     status: Status,
-    _types: HashMap<String, ComposeType>,
+    types: HashMap<String, ComposeType>,
     functions: Vec<FunctionState>,
     code: Vec<CodeElement>,
 }
@@ -40,7 +40,7 @@ impl RootState {
                         let compound = ComposeType {
                             types: it.types.expect("inner compound types"),
                         };
-                        self._types.insert(name, compound);
+                        self.types.insert(name, compound);
                     }
                     State::Function(it) => {
                         self.functions.push(it);
@@ -217,7 +217,7 @@ impl Default for RootState {
     fn default() -> Self {
         Self {
             status: Status::New,
-            _types: HashMap::with_capacity(0),
+            types: HashMap::with_capacity(0),
             functions: Vec::with_capacity(0),
             code: Vec::with_capacity(0),
         }
