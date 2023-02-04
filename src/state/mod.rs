@@ -6,7 +6,7 @@ use crate::{
 
 use self::{
     function_state::FunctionState, if_state::IfState, root_state::RootState,
-    string_state::StringState, while_state::WhileState,
+    string_state::StringState, type_state::TypeState, while_state::WhileState,
 };
 
 pub mod function_state;
@@ -52,6 +52,7 @@ impl Status {
 #[derive(Debug)]
 pub enum State {
     Root(RootState),
+    Type(TypeState),
     Function(FunctionState),
     If(IfState),
     While(WhileState),
@@ -62,11 +63,12 @@ impl State {
     /// Returns wether the state has finished or not
     fn process<T: Source>(&mut self, env: &mut Env<T>) -> Result<bool> {
         match self {
-            State::Root(it) => it.process(env),
-            State::Function(it) => it.process(env),
-            State::If(it) => it.process(env),
-            State::While(it) => it.process(env),
-            State::String(it) => it.process(env),
+            Self::Root(it) => it.process(env),
+            Self::Type(it) => it.process(env),
+            Self::Function(it) => it.process(env),
+            Self::If(it) => it.process(env),
+            Self::While(it) => it.process(env),
+            Self::String(it) => it.process(env),
         }
     }
 }
@@ -223,4 +225,8 @@ fn parse_types<T: Source>(env: &mut Env<T>) -> Result<Vec<TypeElement>> {
         }
     }
     Ok(types)
+}
+
+fn is_keyword(buf: &str) -> bool {
+    matches!(buf, "type" | "def" | "fun" | "if" | "while")
 }

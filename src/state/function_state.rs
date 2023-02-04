@@ -5,7 +5,7 @@ use crate::{
 };
 
 use super::{
-    expect_char, if_state::IfState, parse_buf, parse_types, string_state::StringState,
+    expect_char, if_state::IfState, is_keyword, parse_buf, parse_types, string_state::StringState,
     while_state::WhileState, Env, State, Status,
 };
 
@@ -81,13 +81,10 @@ impl FunctionState {
                         }
                     }
                 }
-                match buf.as_str() {
-                    "type" | "def" | "fun" | "if" | "while" => {
-                        return Err(Error::FunctionNameIsKeyword {
-                            span: index..env.source.index(),
-                        })
-                    }
-                    _ => {}
+                if is_keyword(&buf) {
+                    return Err(Error::FunctionNameIsKeyword {
+                        span: index..env.source.index(),
+                    });
                 }
                 self.name = Some(index..env.source.index());
                 env.source.consume_whitespace();
@@ -110,6 +107,7 @@ impl FunctionState {
                 let result = env.result.take().expect("result");
                 match result {
                     State::Root(_) => panic!("received root state"),
+                    State::Type(_) => panic!("received type state"),
                     State::Function(_) => panic!("received function state"),
                     State::If(it) => {
                         self.code.push(CodeElement::IfStatement(IfStatement {

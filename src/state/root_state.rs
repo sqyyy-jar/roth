@@ -8,7 +8,7 @@ use crate::{
 
 use super::{
     function_state::FunctionState, if_state::IfState, string_state::StringState,
-    while_state::WhileState, Env, State, Status,
+    type_state::TypeState, while_state::WhileState, Env, State, Status,
 };
 
 /// Holds:
@@ -35,6 +35,13 @@ impl RootState {
                 let result = env.result.take().expect("result");
                 match result {
                     State::Root(_) => panic!("received root state"),
+                    State::Type(it) => {
+                        let name = env.source.slice(it.name.expect("name span")).to_string();
+                        let compound = ComposeType {
+                            types: it.types.expect("inner compound types"),
+                        };
+                        self._types.insert(name, compound);
+                    }
                     State::Function(it) => {
                         self.functions.push(it);
                     }
@@ -104,7 +111,12 @@ impl RootState {
                     continue;
                 };
                 match buf.as_str() {
-                    "type" => todo!("Implement compound types"),
+                    "type" => {
+                        self.status = Status::Waiting;
+                        env.tmp_stack
+                            .push(State::Type(TypeState::with_start_index(index)));
+                        return Ok(false);
+                    }
                     "def" | "fun" => {
                         self.status = Status::Waiting;
                         env.tmp_stack

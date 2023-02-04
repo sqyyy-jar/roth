@@ -57,6 +57,7 @@ impl LoopState {
                 let result = env.result.take().expect("result");
                 match result {
                     State::Root(_) => panic!("received root state"),
+                    State::Type(_) => panic!("received type state"),
                     State::Function(_) => panic!("received function state"),
                     State::If(it) => {
                         self.code.push(CodeElement::IfStatement(IfStatement {

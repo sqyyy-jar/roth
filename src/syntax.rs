@@ -11,7 +11,7 @@ pub enum Type {
 
 #[derive(Debug)]
 pub struct ComposeType {
-    pub types: Vec<Type>,
+    pub types: Vec<TypeElement>,
 }
 
 #[derive(Debug)]
