@@ -20,10 +20,7 @@ fn main() {
     let filename = args().nth(1).expect("filename");
     let code = fs::read_to_string(&filename).expect("read file");
     let file = SimpleFile::new(&filename, &code);
-    let result = process(
-        State::Root(RootState::default()),
-        CharsSource::new(code.chars()),
-    );
+    let result = process(State::Root(RootState::default()), CharsSource::new(&code));
     if let Ok(result) = result {
         println!("{result:#?}");
         return;
