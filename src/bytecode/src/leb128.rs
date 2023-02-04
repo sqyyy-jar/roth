@@ -5,6 +5,7 @@ use byteorder::{ReadBytesExt, WriteBytesExt};
 pub fn encode(write: &mut impl Write, value: u64) -> Result<()> {
     if value == 0 {
         write.write_u8(0x00)?;
+        return Ok(());
     }
     let bin_digits = 64 - value.leading_zeros();
     let parts = parts(bin_digits);
