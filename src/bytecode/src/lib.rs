@@ -1,3 +1,4 @@
+pub mod asm;
 pub mod format;
 pub mod leb128;
 
