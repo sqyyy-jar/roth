@@ -8,9 +8,9 @@ use super::Env;
 
 #[derive(Debug)]
 pub struct StringState {
-    pub start: usize,
-    pub value_start: usize,
-    pub result: Option<Instruction>,
+    pub(super) start: usize,
+    pub(super) value_start: usize,
+    pub(super) result: Option<Instruction>,
 }
 
 impl StringState {

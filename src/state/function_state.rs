@@ -1,12 +1,12 @@
 use crate::{
     error::{Error, Result},
-    syntax::{CodeElement, IfStatement, Span, Type, TypeElement, WhileStatement},
+    syntax::{CodeElement, IfStatement, Span, TypeElement, WhileStatement},
     util::source::Source,
 };
 
 use super::{
-    if_state::IfState, parse_buf, string_state::StringState, while_state::WhileState, Env, State,
-    Status,
+    expect_char, if_state::IfState, parse_buf, parse_types, string_state::StringState,
+    while_state::WhileState, Env, State, Status,
 };
 
 /// Holds:
@@ -92,12 +92,12 @@ impl FunctionState {
                 self.name = Some(index..env.source.index());
                 env.source.consume_whitespace();
                 expect_char(env, '(')?;
-                let input = self.parse_types(env)?;
+                let input = parse_types(env)?;
                 env.source.consume_whitespace();
                 expect_char(env, ')')?;
                 env.source.consume_whitespace();
                 expect_char(env, '(')?;
-                let output = self.parse_types(env)?;
+                let output = parse_types(env)?;
                 env.source.consume_whitespace();
                 expect_char(env, ')')?;
                 env.source.consume_whitespace();
@@ -237,88 +237,5 @@ impl FunctionState {
         }
         let index = env.source.index();
         Err(Error::UnexpectedEndOfSource { span: index..index })
-    }
-
-    fn parse_types<T: Source>(&mut self, env: &mut Env<T>) -> Result<Vec<TypeElement>> {
-        let mut types = Vec::with_capacity(0);
-        let mut buf = String::new();
-        let mut index = env.source.index();
-        loop {
-            if !env.source.has_next() {
-                let index = env.source.index();
-                return Err(Error::UnexpectedEndOfSource { span: index..index });
-            }
-            let c = env.source.peek().unwrap();
-            match c {
-                ')' => {
-                    if !buf.is_empty() {
-                        types.push(parse_type(index..env.source.index(), &buf));
-                    }
-                    break;
-                }
-                ',' => {
-                    if buf.is_empty() {
-                        env.source.advance();
-                        continue;
-                    }
-                    types.push(parse_type(index..env.source.index(), &buf));
-                    env.source.advance();
-                    buf.clear();
-                    env.source.consume_whitespace();
-                    index = env.source.index();
-                }
-                _ => {
-                    if c.is_whitespace() {
-                        if buf.is_empty() {
-                            env.source.advance();
-                            continue;
-                        }
-                        types.push(parse_type(index..env.source.index(), &buf));
-                        env.source.advance();
-                        buf.clear();
-                        env.source.consume_whitespace();
-                        continue;
-                    }
-                    buf.push(c);
-                    env.source.advance();
-                }
-            }
-        }
-        Ok(types)
-    }
-}
-
-fn expect_char<T: Source>(env: &mut Env<T>, c: char) -> Result<()> {
-    if !env.source.has_next() {
-        let index = env.source.index();
-        return Err(Error::UnexpectedEndOfSource { span: index..index });
-    }
-    let ac = env.source.peek().unwrap();
-    if c != ac {
-        let index = env.source.index();
-        env.source.advance();
-        return Err(Error::UnexpectedCharacter {
-            span: index..env.source.index(),
-        });
-    }
-    env.source.advance();
-    Ok(())
-}
-
-fn parse_type(span: Span, buf: &str) -> TypeElement {
-    match buf {
-        "int" => TypeElement::Type {
-            span,
-            value: Type::Int,
-        },
-        "float" => TypeElement::Type {
-            span,
-            value: Type::Float,
-        },
-        "str" => TypeElement::Type {
-            span,
-            value: Type::String,
-        },
-        _ => TypeElement::ComposeType { span },
     }
 }

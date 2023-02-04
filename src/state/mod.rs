@@ -1,6 +1,6 @@
 use crate::{
-    error::Result,
-    syntax::{CodeElement, Instruction},
+    error::{Error, Result},
+    syntax::{CodeElement, Instruction, Span, Type, TypeElement},
     util::source::Source,
 };
 
@@ -14,6 +14,7 @@ pub mod if_state;
 pub mod loop_state;
 pub mod root_state;
 pub mod string_state;
+pub mod type_state;
 pub mod while_state;
 
 /// Holds:
@@ -91,7 +92,7 @@ pub fn process(initial_state: State, source: impl Source) -> Result<State> {
     }
 }
 
-pub(self) fn parse_buf<T: Source>(
+fn parse_buf<T: Source>(
     status: &mut Status,
     code: &mut Vec<CodeElement>,
     env: &mut Env<T>,
@@ -139,4 +140,87 @@ pub(self) fn parse_buf<T: Source>(
             Ok(false)
         }
     }
+}
+
+fn expect_char<T: Source>(env: &mut Env<T>, c: char) -> Result<()> {
+    if !env.source.has_next() {
+        let index = env.source.index();
+        return Err(Error::UnexpectedEndOfSource { span: index..index });
+    }
+    let ac = env.source.peek().unwrap();
+    if c != ac {
+        let index = env.source.index();
+        env.source.advance();
+        return Err(Error::UnexpectedCharacter {
+            span: index..env.source.index(),
+        });
+    }
+    env.source.advance();
+    Ok(())
+}
+
+fn parse_type(span: Span, buf: &str) -> TypeElement {
+    match buf {
+        "int" => TypeElement::Type {
+            span,
+            value: Type::Int,
+        },
+        "float" => TypeElement::Type {
+            span,
+            value: Type::Float,
+        },
+        "str" => TypeElement::Type {
+            span,
+            value: Type::String,
+        },
+        _ => TypeElement::ComposeType { span },
+    }
+}
+
+fn parse_types<T: Source>(env: &mut Env<T>) -> Result<Vec<TypeElement>> {
+    let mut types = Vec::with_capacity(0);
+    let mut buf = String::new();
+    let mut index = env.source.index();
+    loop {
+        if !env.source.has_next() {
+            let index = env.source.index();
+            return Err(Error::UnexpectedEndOfSource { span: index..index });
+        }
+        let c = env.source.peek().unwrap();
+        match c {
+            ')' => {
+                if !buf.is_empty() {
+                    types.push(parse_type(index..env.source.index(), &buf));
+                }
+                break;
+            }
+            ',' => {
+                if buf.is_empty() {
+                    env.source.advance();
+                    continue;
+                }
+                types.push(parse_type(index..env.source.index(), &buf));
+                env.source.advance();
+                buf.clear();
+                env.source.consume_whitespace();
+                index = env.source.index();
+            }
+            _ => {
+                if c.is_whitespace() {
+                    if buf.is_empty() {
+                        env.source.advance();
+                        continue;
+                    }
+                    types.push(parse_type(index..env.source.index(), &buf));
+                    env.source.advance();
+                    buf.clear();
+                    env.source.consume_whitespace();
+                    continue;
+                }
+                buf.push(c);
+                env.source.advance();
+            }
+        }
+    }
+    Ok(types)
 }
