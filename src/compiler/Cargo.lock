@@ -3,12 +3,6 @@
 version = 3
 
 [[package]]
-name = "byteorder"
-version = "1.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
-
-[[package]]
 name = "codespan-reporting"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -37,14 +31,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "roth-bytecode"
-version = "1.0.0-alpha"
-dependencies = [
- "byteorder",
-]
-
-[[package]]
-name = "roth-compiler"
+name = "roth"
 version = "1.0.0-alpha"
 dependencies = [
  "codespan-reporting",

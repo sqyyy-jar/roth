@@ -10,6 +10,7 @@ use codespan_reporting::{
 use state::{process, root_state::RootState, State};
 use util::source::CharsSource;
 
+pub mod compiler;
 pub mod error;
 pub mod path;
 pub mod state;

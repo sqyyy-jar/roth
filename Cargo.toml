@@ -1,8 +1,2 @@
-[package]
-name = "parser2"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-thiserror = "1.0"
-codespan-reporting = "0.11"
+[workspace]
+members = ["src/compiler", "src/bytecode"]
