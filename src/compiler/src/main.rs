@@ -12,7 +12,6 @@ use util::source::CharsSource;
 
 pub mod compiler;
 pub mod error;
-pub mod path;
 pub mod state;
 pub mod syntax;
 pub mod util;

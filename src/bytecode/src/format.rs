@@ -36,6 +36,14 @@ impl Binary {
     }
 }
 
+impl Default for Binary {
+    fn default() -> Self {
+        Self {
+            sections: Vec::with_capacity(0),
+        }
+    }
+}
+
 pub enum BinarySection {
     Strings { strings: Vec<String> },
     Functions { functions: Vec<BinaryFunction> },

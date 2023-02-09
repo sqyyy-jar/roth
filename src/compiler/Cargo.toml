@@ -4,5 +4,6 @@ version = "1.0.0-alpha"
 edition = "2021"
 
 [dependencies]
+roth-bytecode = { path = "../bytecode" }
 thiserror = "1.0"
 codespan-reporting = "0.11"
