@@ -1,2 +1,2 @@
 [workspace]
-members = ["src/compiler", "src/bytecode"]
+members = ["src/bytecode", "src/compiler", "src/runtime"]
