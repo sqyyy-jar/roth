@@ -48,7 +48,15 @@ name = "roth-compiler"
 version = "1.0.0-alpha"
 dependencies = [
  "codespan-reporting",
+ "roth-bytecode",
  "thiserror",
+]
+
+[[package]]
+name = "roth-runtime"
+version = "1.0.0-alpha"
+dependencies = [
+ "roth-bytecode",
 ]
 
 [[package]]
