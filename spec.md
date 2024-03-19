@@ -14,12 +14,13 @@
 |   `<=`   | Check the top two entries on the stack for equality                                       |
 |   `>=`   | Check the top two entries on the stack for equality                                       |
 |  `drop`  | Pop the top of the stack                                                                  |
-|  `ldc`   | Load the constant at the address on top of the stack                                      |
-|  `swp`   | Swap the top two entries on the stack                                                     |
+|  `load`  | Load the constant at the address on top of the stack                                      |
+|  `swap`  | Swap the top two entries on the stack                                                     |
 |  `tRot`  | Rotate the three top stack elements by wrapping the third element to the top of the stack |
 |  `dup`   | Duplicate the top of the stack                                                            |
 |  `dDup`  | Duplicate the second element on the stack                                                 |
 |  `tDup`  | Duplicate the third element on the stack                                                  |
+|  `jump`  | Jump to the address on the stack                                                          |
 |   `if`   | Jump to the first address on the stack if the second element on the stack is not zero     |
 |  `!if`   | Jump to the first address on the stack if the second element on the stack is zero         |
 | `abort`  | Abort the virtual machine                                                                 |

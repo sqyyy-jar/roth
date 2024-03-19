@@ -26,27 +26,27 @@ pub fn check(bytes: &[u8]) -> Result<(usize, usize)> {
                 }
                 stack.pop().unwrap();
             }
-            INSN_LDC => {
+            INSN_LOAD => {
                 if stack.is_empty() {
                     return Err(Error::new(
                         ErrorKind::Other,
-                        invalid_stack("ldc", read.position() - 2),
+                        invalid_stack("load", read.position() - 2),
                     ));
                 }
                 let x = stack.pop().unwrap();
                 if !x.is_int() {
                     return Err(Error::new(
                         ErrorKind::Other,
-                        invalid_stack("ldc", read.position() - 2),
+                        invalid_stack("load", read.position() - 2),
                     ));
                 }
                 stack.push(Type::String);
             }
-            INSN_SWP => {
+            INSN_SWAP => {
                 if stack.len() < 2 {
                     return Err(Error::new(
                         ErrorKind::Other,
-                        invalid_stack("swp", read.position() - 2),
+                        invalid_stack("swap", read.position() - 2),
                     ));
                 }
                 let x = stack.pop().unwrap();
@@ -58,7 +58,7 @@ pub fn check(bytes: &[u8]) -> Result<(usize, usize)> {
                 if stack.len() < 3 {
                     return Err(Error::new(
                         ErrorKind::Other,
-                        invalid_stack("trirot", read.position() - 2),
+                        invalid_stack("trot", read.position() - 2),
                     ));
                 }
                 let x = stack.pop().unwrap();
@@ -81,7 +81,7 @@ pub fn check(bytes: &[u8]) -> Result<(usize, usize)> {
                 if stack.len() < 2 {
                     return Err(Error::new(
                         ErrorKind::Other,
-                        invalid_stack("dup", read.position() - 2),
+                        invalid_stack("ddup", read.position() - 2),
                     ));
                 }
                 stack.push(stack[stack.len() - 2]);
@@ -90,35 +90,35 @@ pub fn check(bytes: &[u8]) -> Result<(usize, usize)> {
                 if stack.len() < 3 {
                     return Err(Error::new(
                         ErrorKind::Other,
-                        invalid_stack("dup", read.position() - 2),
+                        invalid_stack("tdup", read.position() - 2),
                     ));
                 }
                 stack.push(stack[stack.len() - 3]);
             }
-            INSN_JMP => {
+            INSN_J => {
                 if stack.is_empty() {
                     return Err(Error::new(
                         ErrorKind::Other,
                         invalid_stack("jmp", read.position() - 2),
                     ));
                 }
-                expect_type_on_stack(&mut stack, Type::Int, "jmp", read.position() - 2)?;
+                expect_type_on_stack(&mut stack, Type::Int, "j", read.position() - 2)?;
             }
-            INSN_JMPIF => {
+            INSN_JNZ => {
                 if stack.len() < 2 {
                     return Err(Error::new(
                         ErrorKind::Other,
                         invalid_stack("jmpif", read.position() - 2),
                     ));
                 }
-                expect_type_on_stack(&mut stack, Type::Int, "jmpif", read.position() - 2)?;
-                expect_type_on_stack(&mut stack, Type::Int, "jmpif", read.position() - 2)?;
+                expect_type_on_stack(&mut stack, Type::Int, "jnz", read.position() - 2)?;
+                expect_type_on_stack(&mut stack, Type::Int, "jnz", read.position() - 2)?;
             }
-            INSN_JMPIFZ => {
+            INSN_JZ => {
                 if stack.len() < 2 {
                     return Err(Error::new(
                         ErrorKind::Other,
-                        invalid_stack("jmpifz", read.position() - 2),
+                        invalid_stack("jz", read.position() - 2),
                     ));
                 }
                 expect_type_on_stack(&mut stack, Type::Int, "jmpifz", read.position() - 2)?;
@@ -152,7 +152,7 @@ pub fn check(bytes: &[u8]) -> Result<(usize, usize)> {
                 expect_type_on_stack(&mut stack, Type::Int, "numconv-float", read.position() - 2)?;
                 stack.push(Type::Float);
             }
-            INSN_ABRT => {}
+            INSN_ABORT => {}
             INSN_EXIT => {
                 if stack.is_empty() {
                     return Err(Error::new(

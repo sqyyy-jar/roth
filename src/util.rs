@@ -5,7 +5,7 @@ use std::{
 
 use byteorder::{LittleEndian, ReadBytesExt};
 
-use crate::runtime::{PanicInfo, VirtualMachine};
+use crate::runtime::{PanicInfo, Runtime};
 
 pub fn default_panic_handler(info: PanicInfo) -> ! {
     match info {
@@ -55,7 +55,7 @@ pub fn read_string_constants(read: &mut impl Read) -> Result<Vec<String>> {
     Ok(constants)
 }
 
-fn dump_vm(vm: &VirtualMachine) {
+fn dump_vm(vm: &Runtime) {
     println!("vm {{");
     println!("  base_pointer: 0x{:012X}", vm.bp as usize);
     println!("  stack_pointer: 0x{:012X}", vm.sp as usize);

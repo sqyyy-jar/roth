@@ -12,17 +12,17 @@ const FLAG_STR: u16 = (TYPE_STR as u16) << 8;
 /// Drop top of the stack
 pub const INSN_DROP: u16 = 0x0000;
 /// Load constant
-pub const INSN_LDC: u16 = 0x0001;
+pub const INSN_LOAD: u16 = 0x0001;
 /// Swap top two element on the stack
-pub const INSN_SWP: u16 = 0x0002;
+pub const INSN_SWAP: u16 = 0x0002;
 /// Duplicate top element on the stack
 pub const INSN_DUP: u16 = 0x0003;
 /// Jump to address on top of the stack
-pub const INSN_JMP: u16 = 0x0004;
+pub const INSN_J: u16 = 0x0004;
 /// Jump to address on top of the stack if the second element on the stack is non-zero
-pub const INSN_JMPIF: u16 = 0x0005;
+pub const INSN_JNZ: u16 = 0x0005;
 /// Jump to address on top of the stack if the second element on the stack is zero
-pub const INSN_JMPIFZ: u16 = 0x0006;
+pub const INSN_JZ: u16 = 0x0006;
 pub const INSN_TROT: u16 = 0x0007;
 pub const INSN_DDUP: u16 = 0x000A;
 pub const INSN_TDUP: u16 = 0x000B;
@@ -41,7 +41,7 @@ pub const INSN_NUMCONV_F64: u16 = INSN_NUMCONV | FLAG_F64;
 
 // System operations
 /// Abort virtual machine
-pub const INSN_ABRT: u16 = 0x1000;
+pub const INSN_ABORT: u16 = 0x1000;
 /// Exit virtual machine
 pub const INSN_EXIT: u16 = 0x1001;
 /// Panic virtual machine
@@ -105,6 +105,7 @@ pub enum Type {
     Int,
     Float,
     String,
+    CodeAddress,
 }
 
 impl Type {

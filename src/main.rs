@@ -5,7 +5,7 @@ use std::{
     process::exit,
 };
 
-use runtime::VirtualMachine;
+use runtime::Runtime;
 use util::read_string_constants;
 
 pub mod bytecode;
@@ -89,7 +89,7 @@ fn main() {
                 println!("Could not read file: {err}");
                 return;
             };
-            let mut vm = VirtualMachine::new(
+            let mut vm = Runtime::new(
                 &bytes,
                 0,
                 if flags.verify {
@@ -149,7 +149,7 @@ fn main() {
             } else {
                 4096 * 16
             };
-            let mut vm = VirtualMachine::new(
+            let mut vm = Runtime::new(
                 &bytes[read.position() as usize..],
                 0,
                 stack_size,
@@ -175,8 +175,7 @@ interpret, i  [source file] [flags]                Run file directly
 Flags:
 -verify             Enable full verification
 -noverify           Disable some amount of verification
--prealloc [amount]  Set size of preallocated memory for strings
-"#
+-prealloc [amount]  Set size of preallocated memory for strings"#
     );
 }
 

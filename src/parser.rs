@@ -12,12 +12,12 @@ pub struct PreBinary {
 
 pub enum Insn {
     Drop,
-    Ldc,
-    Swp,
+    Load,
+    Swap,
     Dup,
-    Jmp,
-    JmpIf,
-    JmpIfZ,
+    Jump,
+    JumpNotZero,
+    JumpZero,
     PushInt(i64),
     PushFloat(f64),
     NumConvInt,
@@ -57,7 +57,7 @@ pub enum Insn {
 }
 
 enum PostProc {
-    LabelInser { index: usize, label: String },
+    InsertLabelAddress { index: usize, label: String },
 }
 
 pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
@@ -154,7 +154,7 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
                 expect_stack_length(&stack, 2)?;
                 let x = stack.pop().unwrap();
                 let y = stack.pop().unwrap();
-                expect_equal(x, y)?;
+                expect_equal_type(x, y)?;
                 if x.is_int() {
                     instructions.push(Insn::AddInt);
                     stack.push(Type::Int);
@@ -177,7 +177,7 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
                 expect_stack_length(&stack, 2)?;
                 let x = stack.pop().unwrap();
                 let y = stack.pop().unwrap();
-                expect_equal(x, y)?;
+                expect_equal_type(x, y)?;
                 if x.is_int() {
                     instructions.push(Insn::SubInt);
                     stack.push(Type::Int);
@@ -195,7 +195,7 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
                 expect_stack_length(&stack, 2)?;
                 let x = stack.pop().unwrap();
                 let y = stack.pop().unwrap();
-                expect_equal(x, y)?;
+                expect_equal_type(x, y)?;
                 if x.is_int() {
                     instructions.push(Insn::MulInt);
                     stack.push(Type::Int);
@@ -213,7 +213,7 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
                 expect_stack_length(&stack, 2)?;
                 let x = stack.pop().unwrap();
                 let y = stack.pop().unwrap();
-                expect_equal(x, y)?;
+                expect_equal_type(x, y)?;
                 if x.is_int() {
                     instructions.push(Insn::DivInt);
                     stack.push(Type::Int);
@@ -231,7 +231,7 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
                 expect_stack_length(&stack, 2)?;
                 let x = stack.pop().unwrap();
                 let y = stack.pop().unwrap();
-                expect_equal(x, y)?;
+                expect_equal_type(x, y)?;
                 if x.is_int() {
                     instructions.push(Insn::EqInt);
                     stack.push(Type::Int);
@@ -254,7 +254,7 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
                 expect_stack_length(&stack, 2)?;
                 let x = stack.pop().unwrap();
                 let y = stack.pop().unwrap();
-                expect_equal(x, y)?;
+                expect_equal_type(x, y)?;
                 if x.is_int() {
                     instructions.push(Insn::LtInt);
                     stack.push(Type::Int);
@@ -272,7 +272,7 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
                 expect_stack_length(&stack, 2)?;
                 let x = stack.pop().unwrap();
                 let y = stack.pop().unwrap();
-                expect_equal(x, y)?;
+                expect_equal_type(x, y)?;
                 if x.is_int() {
                     instructions.push(Insn::GtInt);
                     stack.push(Type::Int);
@@ -290,7 +290,7 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
                 expect_stack_length(&stack, 2)?;
                 let x = stack.pop().unwrap();
                 let y = stack.pop().unwrap();
-                expect_equal(x, y)?;
+                expect_equal_type(x, y)?;
                 if x.is_int() {
                     instructions.push(Insn::LeInt);
                     stack.push(Type::Int);
@@ -308,7 +308,7 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
                 expect_stack_length(&stack, 2)?;
                 let x = stack.pop().unwrap();
                 let y = stack.pop().unwrap();
-                expect_equal(x, y)?;
+                expect_equal_type(x, y)?;
                 if x.is_int() {
                     instructions.push(Insn::GeInt);
                     stack.push(Type::Int);
@@ -327,9 +327,9 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
                 expect_stack_length(&stack, 1)?;
                 let _ = stack.pop().unwrap();
             }
-            "ldc" => {
+            "load" => {
                 byte_index += 2;
-                instructions.push(Insn::Ldc);
+                instructions.push(Insn::Load);
                 expect_stack_length(&stack, 1)?;
                 let x = stack.pop().unwrap();
                 if !x.is_int() {
@@ -340,9 +340,9 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
                 }
                 stack.push(Type::String);
             }
-            "swp" => {
+            "swap" => {
                 byte_index += 2;
-                instructions.push(Insn::Swp);
+                instructions.push(Insn::Swap);
                 expect_stack_length(&stack, 2)?;
                 let x = stack.pop().unwrap();
                 let y = stack.pop().unwrap();
@@ -378,9 +378,18 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
                 expect_stack_length(&stack, 3)?;
                 stack.push(stack[stack.len() - 3]);
             }
+            "jump" => {
+                byte_index += 2;
+                instructions.push(Insn::Jump);
+                expect_stack_length(&stack, 1)?;
+                let addr = stack.pop().unwrap();
+                if addr.is_int() {
+                    return Err(Error::new(ErrorKind::Other, "Invalid stack"));
+                }
+            }
             "if" => {
                 byte_index += 2;
-                instructions.push(Insn::JmpIf);
+                instructions.push(Insn::JumpNotZero);
                 expect_stack_length(&stack, 2)?;
                 let x = stack.pop().unwrap();
                 let y = stack.pop().unwrap();
@@ -390,7 +399,7 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
             }
             "!if" => {
                 byte_index += 2;
-                instructions.push(Insn::JmpIfZ);
+                instructions.push(Insn::JumpZero);
                 expect_stack_length(&stack, 2)?;
                 let x = stack.pop().unwrap();
                 let y = stack.pop().unwrap();
@@ -441,6 +450,7 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
                     Type::Int => Insn::PrintInt,
                     Type::Float => Insn::PrintFloat,
                     Type::String => Insn::PrintString,
+                    Type::CodeAddress => Insn::PrintInt,
                 });
             }
             "~float" => {
@@ -511,32 +521,20 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
                     continue;
                 }
                 if let Some(label) = token.strip_prefix('@') {
-                    post_proc.push(PostProc::LabelInser {
+                    post_proc.push(PostProc::InsertLabelAddress {
                         index: instructions.len(),
                         label: label.to_string(),
                     });
-                    // let Some(index) = labels.get(label) else {
-                    //     return Err(Error::new(
-                    //         ErrorKind::Other,
-                    //         format!("Unknown label '{label}'"),
-                    //     ));
-                    // };
                     byte_index += 10 + 2;
                     instructions.push(Insn::PushInt(-1));
-                    instructions.push(Insn::Jmp);
+                    instructions.push(Insn::Jump);
                     continue;
                 }
                 if let Some(label) = token.strip_prefix('&') {
-                    post_proc.push(PostProc::LabelInser {
+                    post_proc.push(PostProc::InsertLabelAddress {
                         index: instructions.len(),
                         label: label.to_string(),
                     });
-                    // let Some(index) = labels.get(label) else {
-                    //     return Err(Error::new(
-                    //         ErrorKind::Other,
-                    //         format!("Unknown label '{label}'"),
-                    //     ));
-                    // };
                     byte_index += 10;
                     instructions.push(Insn::PushInt(-1));
                     stack.push(Type::Int);
@@ -545,7 +543,7 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
                 if let Some(string) = token.strip_prefix('"') {
                     byte_index += 10 + 2;
                     instructions.push(Insn::PushInt(constants.len() as _));
-                    instructions.push(Insn::Ldc);
+                    instructions.push(Insn::Load);
                     constants.push(string[0..string.len() - 1].to_string());
                     stack.push(Type::String);
                     continue;
@@ -566,14 +564,14 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
                 }
                 return Err(Error::new(
                     ErrorKind::Other,
-                    format!("Unknown token '{token}'"),
+                    format!("Unknown token {token:?}"),
                 ));
             }
         }
     }
     for proc in post_proc {
         match proc {
-            PostProc::LabelInser { index, label } => {
+            PostProc::InsertLabelAddress { index, label } => {
                 let Some(constant_index) = labels.get(&label) else {
                     return Err(Error::new(
                         ErrorKind::Other,
@@ -590,7 +588,7 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
     })
 }
 
-fn expect_equal(x: Type, y: Type) -> Result<()> {
+fn expect_equal_type(x: Type, y: Type) -> Result<()> {
     if x != y {
         return Err(Error::new(
             ErrorKind::Other,

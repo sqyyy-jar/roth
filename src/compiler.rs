@@ -16,12 +16,12 @@ pub fn compile(write: &mut impl Write, pre_binary: &PreBinary) -> Result<()> {
     for insn in &pre_binary.instructions {
         match insn {
             Insn::Drop => write.write_u16::<LittleEndian>(INSN_DROP)?,
-            Insn::Ldc => write.write_u16::<LittleEndian>(INSN_LDC)?,
-            Insn::Swp => write.write_u16::<LittleEndian>(INSN_SWP)?,
+            Insn::Load => write.write_u16::<LittleEndian>(INSN_LOAD)?,
+            Insn::Swap => write.write_u16::<LittleEndian>(INSN_SWAP)?,
             Insn::Dup => write.write_u16::<LittleEndian>(INSN_DUP)?,
-            Insn::Jmp => write.write_u16::<LittleEndian>(INSN_JMP)?,
-            Insn::JmpIf => write.write_u16::<LittleEndian>(INSN_JMPIF)?,
-            Insn::JmpIfZ => write.write_u16::<LittleEndian>(INSN_JMPIFZ)?,
+            Insn::Jump => write.write_u16::<LittleEndian>(INSN_J)?,
+            Insn::JumpNotZero => write.write_u16::<LittleEndian>(INSN_JNZ)?,
+            Insn::JumpZero => write.write_u16::<LittleEndian>(INSN_JZ)?,
             Insn::PushInt(value) => {
                 write.write_u16::<LittleEndian>(INSN_PUSH_I64)?;
                 write.write_i64::<LittleEndian>(*value)?;
@@ -35,7 +35,7 @@ pub fn compile(write: &mut impl Write, pre_binary: &PreBinary) -> Result<()> {
             Insn::TriRot => write.write_u16::<LittleEndian>(INSN_TROT)?,
             Insn::DiDup => write.write_u16::<LittleEndian>(INSN_DDUP)?,
             Insn::TriDup => write.write_u16::<LittleEndian>(INSN_TDUP)?,
-            Insn::Abort => write.write_u16::<LittleEndian>(INSN_ABRT)?,
+            Insn::Abort => write.write_u16::<LittleEndian>(INSN_ABORT)?,
             Insn::Exit => write.write_u16::<LittleEndian>(INSN_EXIT)?,
             Insn::Panic => write.write_u16::<LittleEndian>(INSN_PANIC)?,
             Insn::Println => write.write_u16::<LittleEndian>(INSN_PRINTLN)?,

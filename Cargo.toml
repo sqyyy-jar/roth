@@ -1,7 +1,10 @@
 [package]
-name = "roth"
+name = "cacas"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 byteorder = "*"
+
+[profile.release]
+lto = true

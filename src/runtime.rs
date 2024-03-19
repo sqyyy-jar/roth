@@ -9,15 +9,15 @@ use crate::{bytecode::*, Flags};
 const ALIGNMENT: usize = 4096;
 
 #[derive(Clone, Copy)]
-pub union VMValue {
+pub union Value {
     pub int: i64,
     pub float: f64,
     pub string: *const String,
 }
 
-pub struct VirtualMachine<'a> {
-    pub bp: *mut VMValue,
-    pub sp: *mut VMValue,
+pub struct Runtime<'a> {
+    pub bp: *mut Value,
+    pub sp: *mut Value,
     pub pc: usize,
     pub code: &'a [u8],
     pub stack_size: usize,
@@ -30,7 +30,7 @@ pub struct VirtualMachine<'a> {
 }
 
 //#[allow(unused)]
-impl<'a> VirtualMachine<'a> {
+impl<'a> Runtime<'a> {
     pub fn new(
         code: &'a [u8],
         pc: usize,
@@ -56,32 +56,32 @@ impl<'a> VirtualMachine<'a> {
         }
     }
 
-    fn push(&mut self, value: VMValue) {
+    fn push(&mut self, value: Value) {
         unsafe {
             *self.sp = value;
             self.sp = self.sp.add(1);
         }
     }
 
-    fn pop(&mut self) -> VMValue {
+    fn pop(&mut self) -> Value {
         unsafe {
             self.sp = self.sp.sub(1);
             *self.sp
         }
     }
 
-    fn alloc_string(&mut self, value: String) -> VMValue {
+    fn alloc_string(&mut self, value: String) -> Value {
         for i in 0..self.string_pool_marks.len() {
             if self.string_pool_marks[i] == 0 {
                 self.string_pool[i] = value;
-                return VMValue {
+                return Value {
                     string: &self.string_pool[i],
                 };
             }
         }
         self.string_pool_marks.push(1);
         self.string_pool.push(value);
-        VMValue {
+        Value {
             string: self.string_pool.last().unwrap(),
         }
     }
@@ -91,13 +91,13 @@ impl<'a> VirtualMachine<'a> {
     }
 
     fn fetch_insn(&mut self) -> u16 {
-        let insn = unsafe { *(self.code.as_ptr().add(self.pc) as *const u16) };
+        let insn = unsafe { (self.code.as_ptr().add(self.pc) as *const u16).read_unaligned() };
         self.pc += 2;
         insn
     }
 
-    fn fetch_const(&mut self) -> VMValue {
-        let insn = unsafe { *(self.code.as_ptr().add(self.pc) as *const VMValue) };
+    fn fetch_const(&mut self) -> Value {
+        let insn = unsafe { (self.code.as_ptr().add(self.pc) as *const Value).read_unaligned() };
         self.pc += 8;
         insn
     }
@@ -136,7 +136,7 @@ impl<'a> VirtualMachine<'a> {
                     INSN_DROP => {
                         self.sp = self.sp.sub(1);
                     }
-                    INSN_LDC => {
+                    INSN_LOAD => {
                         let i = self.pop().int;
                         if i < 0 {
                             (self.panic_handler)(PanicInfo::InvalidConstant { vm: self, index: i });
@@ -144,9 +144,9 @@ impl<'a> VirtualMachine<'a> {
                         let Some(constant) = self.constants.get(i as usize) else {
                             (self.panic_handler)(PanicInfo::InvalidConstant { vm: self, index: i });
                         };
-                        self.push(VMValue { string: constant });
+                        self.push(Value { string: constant });
                     }
-                    INSN_SWP => {
+                    INSN_SWAP => {
                         let tmp = *self.sp.sub(2);
                         *self.sp.sub(2) = *self.sp.sub(1);
                         *self.sp.sub(1) = tmp;
@@ -170,17 +170,17 @@ impl<'a> VirtualMachine<'a> {
                         *self.sp = *self.sp.sub(3);
                         self.sp = self.sp.add(1);
                     }
-                    INSN_JMP => {
+                    INSN_J => {
                         self.sp = self.sp.sub(1);
                         self.pc = (*self.sp).int as _;
                     }
-                    INSN_JMPIF => {
+                    INSN_JNZ => {
                         self.sp = self.sp.sub(2);
                         if (*self.sp).int != 0 {
                             self.pc = (*self.sp.add(1)).int as _;
                         }
                     }
-                    INSN_JMPIFZ => {
+                    INSN_JZ => {
                         self.sp = self.sp.sub(2);
                         if (*self.sp).int == 0 {
                             self.pc = (*self.sp.add(1)).int as _;
@@ -191,16 +191,16 @@ impl<'a> VirtualMachine<'a> {
                         self.sp = self.sp.add(1);
                     }
                     INSN_NUMCONV_I64 => {
-                        *self.sp.sub(1) = VMValue {
+                        *self.sp.sub(1) = Value {
                             int: (*self.sp.sub(1)).float as i64,
                         };
                     }
                     INSN_NUMCONV_F64 => {
-                        *self.sp.sub(1) = VMValue {
+                        *self.sp.sub(1) = Value {
                             float: (*self.sp.sub(1)).int as f64,
                         };
                     }
-                    INSN_ABRT => (self.panic_handler)(PanicInfo::Abort { vm: self }),
+                    INSN_ABORT => (self.panic_handler)(PanicInfo::Abort { vm: self }),
                     INSN_EXIT => {
                         self.sp = self.sp.sub(1);
                         let code = (*self.sp).int;
@@ -252,42 +252,42 @@ impl<'a> VirtualMachine<'a> {
                     INSN_ADD_I64 => {
                         let x = self.pop().int;
                         let y = self.pop().int;
-                        self.push(VMValue { int: y + x });
+                        self.push(Value { int: y + x });
                     }
                     INSN_SUB_I64 => {
                         let x = self.pop().int;
                         let y = self.pop().int;
-                        self.push(VMValue { int: y - x });
+                        self.push(Value { int: y - x });
                     }
                     INSN_MUL_I64 => {
                         let x = self.pop().int;
                         let y = self.pop().int;
-                        self.push(VMValue { int: y * x });
+                        self.push(Value { int: y * x });
                     }
                     INSN_DIV_I64 => {
                         let x = self.pop().int;
                         let y = self.pop().int;
-                        self.push(VMValue { int: y / x });
+                        self.push(Value { int: y / x });
                     }
                     INSN_ADD_F64 => {
                         let x = self.pop().float;
                         let y = self.pop().float;
-                        self.push(VMValue { float: y + x });
+                        self.push(Value { float: y + x });
                     }
                     INSN_SUB_F64 => {
                         let x = self.pop().float;
                         let y = self.pop().float;
-                        self.push(VMValue { float: y - x });
+                        self.push(Value { float: y - x });
                     }
                     INSN_MUL_F64 => {
                         let x = self.pop().float;
                         let y = self.pop().float;
-                        self.push(VMValue { float: y * x });
+                        self.push(Value { float: y * x });
                     }
                     INSN_DIV_F64 => {
                         let x = self.pop().float;
                         let y = self.pop().float;
-                        self.push(VMValue { float: y / x });
+                        self.push(Value { float: y / x });
                     }
                     INSN_ADD_STR => {
                         let x = self.pop().string;
@@ -298,77 +298,77 @@ impl<'a> VirtualMachine<'a> {
                     INSN_EQ_I64 => {
                         let x = self.pop().int;
                         let y = self.pop().int;
-                        self.push(VMValue {
+                        self.push(Value {
                             int: (x == y) as i64,
                         });
                     }
                     INSN_LT_I64 => {
                         let x = self.pop().int;
                         let y = self.pop().int;
-                        self.push(VMValue {
+                        self.push(Value {
                             int: (y < x) as i64,
                         });
                     }
                     INSN_GT_I64 => {
                         let x = self.pop().int;
                         let y = self.pop().int;
-                        self.push(VMValue {
+                        self.push(Value {
                             int: (y > x) as i64,
                         });
                     }
                     INSN_LE_I64 => {
                         let x = self.pop().int;
                         let y = self.pop().int;
-                        self.push(VMValue {
+                        self.push(Value {
                             int: (y <= x) as i64,
                         });
                     }
                     INSN_GE_I64 => {
                         let x = self.pop().int;
                         let y = self.pop().int;
-                        self.push(VMValue {
+                        self.push(Value {
                             int: (y >= x) as i64,
                         });
                     }
                     INSN_EQ_F64 => {
                         let x = self.pop().float;
                         let y = self.pop().float;
-                        self.push(VMValue {
+                        self.push(Value {
                             int: (y == x) as i64,
                         });
                     }
                     INSN_LT_F64 => {
                         let x = self.pop().float;
                         let y = self.pop().float;
-                        self.push(VMValue {
+                        self.push(Value {
                             int: (y < x) as i64,
                         });
                     }
                     INSN_GT_F64 => {
                         let x = self.pop().float;
                         let y = self.pop().float;
-                        self.push(VMValue {
+                        self.push(Value {
                             int: (y > x) as i64,
                         });
                     }
                     INSN_LE_F64 => {
                         let x = self.pop().float;
                         let y = self.pop().float;
-                        self.push(VMValue {
+                        self.push(Value {
                             int: (y <= x) as i64,
                         });
                     }
                     INSN_GE_F64 => {
                         let x = self.pop().float;
                         let y = self.pop().float;
-                        self.push(VMValue {
+                        self.push(Value {
                             int: (y >= x) as i64,
                         });
                     }
                     INSN_EQ_STR => {
                         let x = self.pop().string;
                         let y = self.pop().string;
-                        self.push(VMValue {
+                        self.push(Value {
                             int: (*x == *y) as i64,
                         });
                     }
@@ -381,7 +381,7 @@ impl<'a> VirtualMachine<'a> {
     }
 }
 
-impl Drop for VirtualMachine<'_> {
+impl Drop for Runtime<'_> {
     fn drop(&mut self) {
         unsafe { dealloc(self.bp as _, self.layout) };
     }
@@ -389,27 +389,27 @@ impl Drop for VirtualMachine<'_> {
 
 pub enum PanicInfo<'a, 'b: 'a> {
     Pop {
-        vm: &'a mut VirtualMachine<'b>,
+        vm: &'a mut Runtime<'b>,
         expected: u32,
         got: u32,
     },
     IllegalInstruction {
-        vm: &'a mut VirtualMachine<'b>,
+        vm: &'a mut Runtime<'b>,
         insn: u16,
     },
     Abort {
-        vm: &'a mut VirtualMachine<'b>,
+        vm: &'a mut Runtime<'b>,
     },
     Exit {
-        vm: &'a mut VirtualMachine<'b>,
+        vm: &'a mut Runtime<'b>,
         code: i64,
     },
     Panic {
-        vm: &'a mut VirtualMachine<'b>,
+        vm: &'a mut Runtime<'b>,
         msg: *const String,
     },
     InvalidConstant {
-        vm: &'a mut VirtualMachine<'b>,
+        vm: &'a mut Runtime<'b>,
         index: i64,
     },
 }
