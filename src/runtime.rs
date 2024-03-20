@@ -170,22 +170,6 @@ impl<'a> Runtime<'a> {
                         *self.sp = *self.sp.sub(3);
                         self.sp = self.sp.add(1);
                     }
-                    INSN_J => {
-                        self.sp = self.sp.sub(1);
-                        self.pc = (*self.sp).int as _;
-                    }
-                    INSN_JNZ => {
-                        self.sp = self.sp.sub(2);
-                        if (*self.sp).int != 0 {
-                            self.pc = (*self.sp.add(1)).int as _;
-                        }
-                    }
-                    INSN_JZ => {
-                        self.sp = self.sp.sub(2);
-                        if (*self.sp).int == 0 {
-                            self.pc = (*self.sp.add(1)).int as _;
-                        }
-                    }
                     INSN_PUSH_I64 | INSN_PUSH_F64 => {
                         *self.sp = self.fetch_const();
                         self.sp = self.sp.add(1);
@@ -371,6 +355,26 @@ impl<'a> Runtime<'a> {
                         self.push(Value {
                             int: (*x == *y) as i64,
                         });
+                    }
+                    INSN_J => {
+                        self.pc = self.pop().int as _;
+                    }
+                    INSN_JNZ => {
+                        self.sp = self.sp.sub(2);
+                        if (*self.sp).int != 0 {
+                            self.pc = (*self.sp.add(1)).int as _;
+                        }
+                    }
+                    INSN_JZ => {
+                        self.sp = self.sp.sub(2);
+                        if (*self.sp).int == 0 {
+                            self.pc = (*self.sp.add(1)).int as _;
+                        }
+                    }
+                    INSN_CALL => {
+                        let addr = self.pop().int;
+                        self.push(Value { int: self.pc as _ });
+                        self.pc = addr as _;
                     }
                     insn => {
                         (self.panic_handler)(PanicInfo::IllegalInstruction { vm: self, insn });

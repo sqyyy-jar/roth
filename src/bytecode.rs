@@ -17,15 +17,9 @@ pub const INSN_LOAD: u16 = 0x0001;
 pub const INSN_SWAP: u16 = 0x0002;
 /// Duplicate top element on the stack
 pub const INSN_DUP: u16 = 0x0003;
-/// Jump to address on top of the stack
-pub const INSN_J: u16 = 0x0004;
-/// Jump to address on top of the stack if the second element on the stack is non-zero
-pub const INSN_JNZ: u16 = 0x0005;
-/// Jump to address on top of the stack if the second element on the stack is zero
-pub const INSN_JZ: u16 = 0x0006;
-pub const INSN_TROT: u16 = 0x0007;
-pub const INSN_DDUP: u16 = 0x000A;
-pub const INSN_TDUP: u16 = 0x000B;
+pub const INSN_TROT: u16 = 0x0004;
+pub const INSN_DDUP: u16 = 0x0005;
+pub const INSN_TDUP: u16 = 0x0006;
 
 const INSN_PUSH: u16 = 0x0008;
 const INSN_NUMCONV: u16 = 0x0009;
@@ -80,6 +74,7 @@ pub const INSN_DIV_F64: u16 = INSN_DIV | FLAG_F64;
 
 pub const INSN_ADD_STR: u16 = INSN_ADD | FLAG_STR;
 
+// Compare operations
 const INSN_EQ: u16 = 0x3000;
 const INSN_LT: u16 = 0x3001;
 const INSN_GT: u16 = 0x3002;
@@ -99,6 +94,16 @@ pub const INSN_LE_F64: u16 = INSN_LE | FLAG_F64;
 pub const INSN_GE_F64: u16 = INSN_GE | FLAG_F64;
 
 pub const INSN_EQ_STR: u16 = INSN_EQ | FLAG_STR;
+
+// Jumps
+/// Jump to address on top of the stack
+pub const INSN_J: u16 = 0x4000;
+/// Jump to address on top of the stack if the second element on the stack is non-zero
+pub const INSN_JNZ: u16 = 0x4001;
+/// Jump to address on top of the stack if the second element on the stack is zero
+pub const INSN_JZ: u16 = 0x4002;
+/// Call address on top of the stack
+pub const INSN_CALL: u16 = 0x4003;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Type {

@@ -18,6 +18,7 @@ pub enum Insn {
     Jump,
     JumpNotZero,
     JumpZero,
+    Call,
     PushInt(i64),
     PushFloat(f64),
     NumConvInt,
@@ -147,7 +148,7 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
     let mut labels = HashMap::new();
     let mut constants = Vec::new();
     let mut post_proc = Vec::new();
-    for (_, token) in tokens.into_iter().enumerate() {
+    for token in tokens.into_iter() {
         match token.as_str() {
             "+" => {
                 byte_index += 2;
@@ -383,8 +384,8 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
                 instructions.push(Insn::Jump);
                 expect_stack_length(&stack, 1)?;
                 let addr = stack.pop().unwrap();
-                if addr.is_int() {
-                    return Err(Error::new(ErrorKind::Other, "Invalid stack"));
+                if !addr.is_int() {
+                    return Err(Error::new(ErrorKind::Other, "Invalid stack to jump"));
                 }
             }
             "if" => {
@@ -394,7 +395,7 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
                 let x = stack.pop().unwrap();
                 let y = stack.pop().unwrap();
                 if !x.is_int() || !y.is_int() {
-                    return Err(Error::new(ErrorKind::Other, "Invalid stack"));
+                    return Err(Error::new(ErrorKind::Other, "Invalid stack for if"));
                 }
             }
             "!if" => {
@@ -404,7 +405,16 @@ pub fn parse(source: &str, flags: &Flags) -> Result<PreBinary> {
                 let x = stack.pop().unwrap();
                 let y = stack.pop().unwrap();
                 if !x.is_int() || !y.is_int() {
-                    return Err(Error::new(ErrorKind::Other, "Invalid stack"));
+                    return Err(Error::new(ErrorKind::Other, "Invalid stack for !if"));
+                }
+            }
+            "call" => {
+                byte_index += 2;
+                instructions.push(Insn::Call);
+                expect_stack_length(&stack, 1)?;
+                let addr = stack.pop().unwrap();
+                if !addr.is_int() {
+                    return Err(Error::new(ErrorKind::Other, "Invalid stack for call"));
                 }
             }
             "abort" => {

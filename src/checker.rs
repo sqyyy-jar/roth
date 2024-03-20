@@ -99,7 +99,7 @@ pub fn check(bytes: &[u8]) -> Result<(usize, usize)> {
                 if stack.is_empty() {
                     return Err(Error::new(
                         ErrorKind::Other,
-                        invalid_stack("jmp", read.position() - 2),
+                        invalid_stack("j", read.position() - 2),
                     ));
                 }
                 expect_type_on_stack(&mut stack, Type::Int, "j", read.position() - 2)?;
@@ -108,7 +108,7 @@ pub fn check(bytes: &[u8]) -> Result<(usize, usize)> {
                 if stack.len() < 2 {
                     return Err(Error::new(
                         ErrorKind::Other,
-                        invalid_stack("jmpif", read.position() - 2),
+                        invalid_stack("jnz", read.position() - 2),
                     ));
                 }
                 expect_type_on_stack(&mut stack, Type::Int, "jnz", read.position() - 2)?;
@@ -121,8 +121,17 @@ pub fn check(bytes: &[u8]) -> Result<(usize, usize)> {
                         invalid_stack("jz", read.position() - 2),
                     ));
                 }
-                expect_type_on_stack(&mut stack, Type::Int, "jmpifz", read.position() - 2)?;
-                expect_type_on_stack(&mut stack, Type::Int, "jmpifz", read.position() - 2)?;
+                expect_type_on_stack(&mut stack, Type::Int, "jz", read.position() - 2)?;
+                expect_type_on_stack(&mut stack, Type::Int, "jz", read.position() - 2)?;
+            }
+            INSN_CALL => {
+                if stack.is_empty() {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        invalid_stack("call", read.position() - 2),
+                    ));
+                }
+                expect_type_on_stack(&mut stack, Type::Int, "call", read.position() - 2)?;
             }
             INSN_PUSH_I64 => {
                 stack.push(Type::Int);

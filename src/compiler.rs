@@ -22,6 +22,7 @@ pub fn compile(write: &mut impl Write, pre_binary: &PreBinary) -> Result<()> {
             Insn::Jump => write.write_u16::<LittleEndian>(INSN_J)?,
             Insn::JumpNotZero => write.write_u16::<LittleEndian>(INSN_JNZ)?,
             Insn::JumpZero => write.write_u16::<LittleEndian>(INSN_JZ)?,
+            Insn::Call => write.write_u16::<LittleEndian>(INSN_CALL)?,
             Insn::PushInt(value) => {
                 write.write_u16::<LittleEndian>(INSN_PUSH_I64)?;
                 write.write_i64::<LittleEndian>(*value)?;
